@@ -36,3 +36,10 @@ npm run dev
 ```sh
 npm run build
 ```
+### ejecutar
+
+```sh
+npm install vue-router
+npm install axios
+npm install sweetalert2
+```
