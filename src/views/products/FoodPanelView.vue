@@ -1,6 +1,6 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import '@/assets/css/food-panel.css'
 import '@/assets/css/popup_panel.css'
@@ -8,6 +8,16 @@ import logo from '@/assets/images/logo.png'
 import menuImg from '@/assets/images/menu.png'
 import hamburguerImg from '@/assets/images/hamburguer.png'
 import categoryImg from '@/assets/images/category.png'
+import {
+  createProduct,
+  createProductCategory,
+  getProductById,
+  getProductCategories,
+  getProducts,
+  updateProduct,
+} from '@/services/products.service'
+
+const router = useRouter()
 
 const menuOpen = ref(false)
 const search = ref('')
@@ -40,11 +50,86 @@ const editForm = ref({
   max_personas: '',
   imagen: null,
   categoria: '',
+  imagenActual: '',
+  activo: true,
 })
 
 const categoryForm = ref({
   nombre: '',
 })
+
+const normalizeImage = (imagen) => {
+  if (!imagen) return ''
+
+  if (
+    imagen.startsWith('http://') ||
+    imagen.startsWith('https://') ||
+    imagen.startsWith('data:image')
+  ) {
+    return imagen
+  }
+
+  const base = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1'
+  const apiBase = base.replace('/api/v1', '')
+
+  if (imagen.startsWith('/')) {
+    return `${apiBase}${imagen}`
+  }
+
+  return `${apiBase}/${imagen}`
+}
+
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    if (!file) {
+      resolve('')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+
+const loadData = async () => {
+  try {
+    const [categoriasData, productosData] = await Promise.all([
+      getProductCategories(),
+      getProducts(),
+    ])
+
+    categorias.value = Array.isArray(categoriasData)
+      ? categoriasData
+      : (categoriasData?.items || categoriasData?.results || [])
+
+    const productosArray = Array.isArray(productosData)
+      ? productosData
+      : (productosData?.items || productosData?.results || [])
+
+    productos.value = productosArray.map((producto) => ({
+      ...producto,
+      imagen: normalizeImage(producto.imagen),
+    }))
+  } catch (error) {
+    if (error?.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      router.push('/login')
+      return
+    }
+
+    Swal.fire({
+      title: 'Error',
+      text: 'No se pudieron cargar los productos.',
+      icon: 'error',
+      confirmButtonText: 'OK',
+      customClass: {
+        confirmButton: 'swal2-confirm',
+      },
+    })
+  }
+}
 
 const filteredProductos = computed(() => {
   let data = [...productos.value]
@@ -61,7 +146,11 @@ const filteredProductos = computed(() => {
   } else if (groupBy.value) {
     data = data.filter(
       (producto) =>
-        String(producto.categoria_producto_id_catProducto) === String(groupBy.value)
+        String(
+          producto.categoria_producto_id_catProducto ??
+            producto.categoria_producto?.id_catProducto ??
+            producto.categoria_producto?.id_categoria
+        ) === String(groupBy.value)
     )
   }
 
@@ -113,6 +202,8 @@ const clearEditForm = () => {
     max_personas: '',
     imagen: null,
     categoria: '',
+    imagenActual: '',
+    activo: true,
   }
 }
 
@@ -172,7 +263,7 @@ const handleEditImageChange = (event) => {
   editForm.value.imagen = event.target.files[0] || null
 }
 
-const showSuccessMessage = (popupType, formType, message) => {
+const showSuccessMessage = (popupType, message) => {
   Swal.fire({
     title: '¡Éxito!',
     text: message,
@@ -181,7 +272,7 @@ const showSuccessMessage = (popupType, formType, message) => {
     customClass: {
       confirmButton: 'swal2-confirm',
     },
-  }).then(() => {
+  }).then(async () => {
     if (popupType === 'contactPopup') {
       closePopup()
       clearForm()
@@ -192,39 +283,32 @@ const showSuccessMessage = (popupType, formType, message) => {
       closeCategoryPopup()
       clearCategoryForm()
     }
-    window.location.href = '/food_panel'
+
+    await loadData()
   })
 }
 
 const handleProductoSubmit = async (event) => {
   event.preventDefault()
 
-  const formData = new FormData()
-  formData.append('nombre', regForm.value.nombre)
-  formData.append('descripcion', regForm.value.descripcion)
-  formData.append('precio', regForm.value.precio)
-  formData.append('max_personas', regForm.value.max_personas)
-  formData.append('categoria', regForm.value.categoria)
-  if (regForm.value.imagen) {
-    formData.append('imagen', regForm.value.imagen)
-  }
-
   try {
-    const response = await fetch('/add_producto', {
-      method: 'POST',
-      body: formData,
+    const imagenBase64 = await fileToBase64(regForm.value.imagen)
+
+    await createProduct({
+      nombre: regForm.value.nombre,
+      descripcion: regForm.value.descripcion,
+      precio: Number(regForm.value.precio),
+      max_personas: Number(regForm.value.max_personas),
+      imagen: imagenBase64,
+      categoria_producto_id_catProducto: Number(regForm.value.categoria),
+      activo: true,
     })
 
-    if (response.ok) {
-      showSuccessMessage('contactPopup', 'regForm', 'Producto registrado con éxito')
-    } else {
-      const text = await response.text()
-      throw new Error(text)
-    }
+    showSuccessMessage('contactPopup', 'Producto registrado con éxito')
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: 'Hubo un problema al registrar el producto.',
+      text: error?.response?.data?.detail || 'Hubo un problema al registrar el producto.',
       icon: 'error',
       confirmButtonText: 'OK',
       customClass: {
@@ -237,25 +321,16 @@ const handleProductoSubmit = async (event) => {
 const handleCategorySubmit = async (event) => {
   event.preventDefault()
 
-  const formData = new FormData()
-  formData.append('nombre', categoryForm.value.nombre)
-
   try {
-    const response = await fetch('/add_category', {
-      method: 'POST',
-      body: formData,
+    await createProductCategory({
+      nombre: categoryForm.value.nombre,
     })
 
-    if (response.ok) {
-      showSuccessMessage('categoryPopup', 'categoryForm', 'Categoría registrada con éxito')
-    } else {
-      const text = await response.text()
-      throw new Error(text)
-    }
+    showSuccessMessage('categoryPopup', 'Categoría registrada con éxito')
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: 'Hubo un problema al registrar la categoría.',
+      text: error?.response?.data?.detail || 'Hubo un problema al registrar la categoría.',
       icon: 'error',
       confirmButtonText: 'OK',
       customClass: {
@@ -267,53 +342,57 @@ const handleCategorySubmit = async (event) => {
 
 const openEditPopup = async (productId) => {
   try {
-    const response = await fetch(`/get_producto/${productId}`)
-    const data = await response.json()
+    const data = await getProductById(productId)
 
     editForm.value.id = productId
     editForm.value.nombre = data.nombre
     editForm.value.descripcion = data.descripcion
     editForm.value.precio = data.precio
     editForm.value.max_personas = data.max_personas
-    editForm.value.categoria = data.categoria_producto_id_catProducto
+    editForm.value.categoria =
+      data.categoria_producto_id_catProducto ??
+      data.categoria_producto?.id_catProducto ??
+      data.categoria_producto?.id_categoria ??
+      ''
     editForm.value.imagen = null
+    editForm.value.imagenActual = data.imagen || ''
+    editForm.value.activo = data.activo ?? true
 
     showEditProductPopup.value = true
     currentEditTab.value = 0
   } catch (error) {
-    console.error('Error al cargar los datos del producto:', error)
+    Swal.fire({
+      title: 'Error',
+      text: 'Error al cargar los datos del producto.',
+      icon: 'error',
+      confirmButtonText: 'OK',
+    })
   }
 }
 
 const handleEditProductoSubmit = async (event) => {
   event.preventDefault()
 
-  const formData = new FormData()
-  formData.append('nombre', editForm.value.nombre)
-  formData.append('descripcion', editForm.value.descripcion)
-  formData.append('precio', editForm.value.precio)
-  formData.append('max_personas', editForm.value.max_personas)
-  formData.append('categoria', editForm.value.categoria)
-  if (editForm.value.imagen) {
-    formData.append('imagen', editForm.value.imagen)
-  }
-
   try {
-    const response = await fetch(`/update_producto/${editForm.value.id}`, {
-      method: 'POST',
-      body: formData,
+    const nuevaImagen = editForm.value.imagen
+      ? await fileToBase64(editForm.value.imagen)
+      : editForm.value.imagenActual
+
+    await updateProduct(editForm.value.id, {
+      nombre: editForm.value.nombre,
+      descripcion: editForm.value.descripcion,
+      precio: Number(editForm.value.precio),
+      max_personas: Number(editForm.value.max_personas),
+      imagen: nuevaImagen,
+      categoria_producto_id_catProducto: Number(editForm.value.categoria),
+      activo: editForm.value.activo,
     })
 
-    if (response.ok) {
-      showSuccessMessage('editPopup', 'editForm', 'Producto actualizado con éxito')
-    } else {
-      const text = await response.text()
-      throw new Error(text)
-    }
+    showSuccessMessage('editPopup', 'Producto actualizado con éxito')
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: 'Hubo un problema al actualizar el producto.',
+      text: error?.response?.data?.detail || 'Hubo un problema al actualizar el producto.',
       icon: 'error',
       confirmButtonText: 'OK',
       customClass: {
@@ -323,7 +402,7 @@ const handleEditProductoSubmit = async (event) => {
   }
 }
 
-const confirmDelete = (event, productId) => {
+const confirmDelete = (event, producto) => {
   event.preventDefault()
 
   Swal.fire({
@@ -340,18 +419,21 @@ const confirmDelete = (event, productId) => {
   }).then(async (result) => {
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`/delete_producto/${productId}`, {
-          method: 'POST',
+        await updateProduct(producto.id_producto, {
+          nombre: producto.nombre,
+          descripcion: producto.descripcion,
+          precio: Number(producto.precio),
+          max_personas: Number(producto.max_personas),
+          imagen: producto.imagen,
+          categoria_producto_id_catProducto:
+            producto.categoria_producto_id_catProducto ??
+            producto.categoria_producto?.id_catProducto ??
+            producto.categoria_producto?.id_categoria,
+          activo: false,
         })
 
-        if (response.ok) {
-          Swal.fire('¡Archivado!', 'El producto ha sido archivado.', 'success').then(() => {
-            window.location.href = '/food_panel'
-          })
-        } else {
-          const text = await response.text()
-          throw new Error(text)
-        }
+        Swal.fire('¡Archivado!', 'El producto ha sido archivado.', 'success')
+        await loadData()
       } catch (error) {
         Swal.fire({
           title: 'Error',
@@ -367,7 +449,7 @@ const confirmDelete = (event, productId) => {
   })
 }
 
-const confirmUnarchive = (event, productId) => {
+const confirmUnarchive = (event, producto) => {
   event.preventDefault()
 
   Swal.fire({
@@ -384,18 +466,31 @@ const confirmUnarchive = (event, productId) => {
   }).then(async (result) => {
     if (result.isConfirmed) {
       try {
-        await fetch(`/unarchive_producto/${productId}`, {
-          method: 'POST',
+        await updateProduct(producto.id_producto, {
+          nombre: producto.nombre,
+          descripcion: producto.descripcion,
+          precio: Number(producto.precio),
+          max_personas: Number(producto.max_personas),
+          imagen: producto.imagen,
+          categoria_producto_id_catProducto:
+            producto.categoria_producto_id_catProducto ??
+            producto.categoria_producto?.id_catProducto ??
+            producto.categoria_producto?.id_categoria,
+          activo: true,
         })
-        Swal.fire('¡Desarchivado!', 'El producto ha sido desarchivado.', 'success').then(() =>
-          window.location.reload()
-        )
+
+        Swal.fire('¡Desarchivado!', 'El producto ha sido desarchivado.', 'success')
+        await loadData()
       } catch (error) {
         Swal.fire('Error', 'No se pudo desarchivar el producto.', 'error')
       }
     }
   })
 }
+
+onMounted(async () => {
+  await loadData()
+})
 </script>
 
 <template>
@@ -492,7 +587,8 @@ const confirmUnarchive = (event, productId) => {
                   <button
                     v-if="producto.activo"
                     class="deleteProductBtn"
-                    @click="confirmDelete($event, producto.id_producto)"
+                    @click="confirmDelete($event, producto)"click="confirmDelete($event, producto.id_producto)"
+
                   >
                     <i class="fa-solid fa-trash"></i>
                   </button>
@@ -500,7 +596,7 @@ const confirmUnarchive = (event, productId) => {
                   <button
                     v-else
                     class="unarchiveProductBtn"
-                    @click="confirmUnarchive($event, producto.id_producto)"
+                    @click="confirmUnarchive($event, producto)"
                   >
                     <i class="fa-solid fa-box-open"></i>
                   </button>
@@ -528,7 +624,7 @@ const confirmUnarchive = (event, productId) => {
           </div>
         </div>
 
-        <form id="regForm" action="/add_producto" method="POST" enctype="multipart/form-data" @submit="handleProductoSubmit">
+        <form id="regForm" @submit.prevent="handleProductoSubmit">
           <div v-show="currentTab === 0" class="tab">
             <div class="form-group">
               <label for="nombre">Nombre</label>
@@ -609,7 +705,7 @@ const confirmUnarchive = (event, productId) => {
           </div>
         </div>
 
-        <form id="editForm" method="POST" @submit="handleEditProductoSubmit">
+   <form id="editForm" @submit.prevent="handleEditProductoSubmit">
           <div v-show="currentEditTab === 0" class="tab">
             <div class="form-group">
               <label for="edit_nombre">Nombre</label>
@@ -679,7 +775,7 @@ const confirmUnarchive = (event, productId) => {
         <img :src="categoryImg" alt="Category Icon" class="product-icon" />
         <h2>REGISTRO NUEVA CATEGORÍA</h2>
 
-        <form id="categoryForm" action="/add_category" method="POST" @submit="handleCategorySubmit">
+        <form id="categoryForm" @submit.prevent="handleCategorySubmit">
           <div class="form-group">
             <label for="categoria_nombre">Nombre de la categoría</label>
             <input

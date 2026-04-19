@@ -1,12 +1,16 @@
 <script setup>
-import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import '@/assets/css/userforms.css'
 import '@/assets/css/perfil_usuario.css'
 import logo from '@/assets/images/logo.png'
 import userPhoto from '@/assets/images/user_photo.png'
+import { getCurrentUser, updateCurrentUser } from '@/services/users.service'
 
+const router = useRouter()
 const menuOpen = ref(false)
+const generalError = ref('')
+const successMessage = ref('')
 
 const form = ref({
   name: '',
@@ -24,12 +28,14 @@ const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
 }
 
-const validateForm = (event) => {
+const validateForm = () => {
   let valid = true
 
   errors.value.name = ''
   errors.value.email = ''
   errors.value.phone = ''
+  generalError.value = ''
+  successMessage.value = ''
 
   const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/
   const phoneRegex = /^\d+$/
@@ -50,18 +56,51 @@ const validateForm = (event) => {
     valid = false
   }
 
-  if (!valid) {
-    event.preventDefault()
+  return valid
+}
+
+const handleSubmit = async () => {
+  if (!validateForm()) return
+
+  try {
+    generalError.value = ''
+    successMessage.value = ''
+
+    const updatedUser = await updateCurrentUser({
+      nombre: form.value.name.trim(),
+      correo: form.value.email.trim(),
+      telefono: form.value.phone ? Number(form.value.phone) : null,
+    })
+
+    localStorage.setItem('user', JSON.stringify(updatedUser))
+    successMessage.value = 'Perfil actualizado correctamente.'
+  } catch (error) {
+    generalError.value =
+      error?.response?.data?.detail || 'No se pudieron guardar los cambios.'
   }
 }
 
 const goToResetPassword = () => {
-  window.location.href = '/reset_password'
+  router.push('/reset_password')
 }
 
 const goToUserHome = () => {
-  window.location.href = '/inicio_usuario'
+  router.push('/inicio_usuario')
 }
+
+onMounted(async () => {
+  try {
+    const user = await getCurrentUser()
+
+    form.value.name = user?.nombre || ''
+    form.value.email = user?.correo || ''
+    form.value.phone = user?.telefono != null ? String(user.telefono) : ''
+  } catch (error) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    router.push('/login')
+  }
+})
 </script>
 
 <template>
@@ -85,9 +124,7 @@ const goToUserHome = () => {
       <div class="form-container">
         <form
           id="registration-form"
-          action="/update_profileUser"
-          method="POST"
-          @submit="validateForm"
+          @submit.prevent="handleSubmit"
         >
           <h3>Perfil de usuario</h3>
 
@@ -136,6 +173,14 @@ const goToUserHome = () => {
             </div>
           </div>
 
+          <div v-if="generalError" class="error-message">
+            {{ generalError }}
+          </div>
+
+          <div v-if="successMessage" class="success-message">
+            {{ successMessage }}
+          </div>
+
           <div class="button-container">
             <button type="submit" class="btn">Guardar cambios</button>
             <button type="button" class="btn" @click="goToUserHome">Cancelar</button>
@@ -145,3 +190,20 @@ const goToUserHome = () => {
     </div>
   </div>
 </template>
+
+<style>
+.error-message {
+  color: red;
+  font-size: 0.8em;
+  visibility: visible;
+  height: auto;
+}
+
+.success-message {
+  color: green;
+  font-size: 0.8em;
+  visibility: visible;
+  height: auto;
+  margin-top: 8px;
+}
+</style>

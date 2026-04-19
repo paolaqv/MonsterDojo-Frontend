@@ -1,24 +1,30 @@
 <script setup>
 import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import '@/assets/css/userforms.css'
 import logo from '@/assets/images/logo.png'
+import { resetPassword } from '@/services/auth.service'
+
+const router = useRouter()
 
 const menuOpen = ref(false)
 const newPassword = ref('')
 const confirmPassword = ref('')
 const errorPassword = ref('')
 const errorConfirmPassword = ref('')
+const generalError = ref('')
+const successMessage = ref('')
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
 }
 
-const validateForm = (event) => {
+const validateForm = () => {
   let valid = true
 
   errorPassword.value = ''
   errorConfirmPassword.value = ''
+  generalError.value = ''
 
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
 
@@ -33,8 +39,41 @@ const validateForm = (event) => {
     valid = false
   }
 
-  if (!valid) {
-    event.preventDefault()
+  return valid
+}
+
+const handleSaveChanges = async () => {
+  if (!validateForm()) return
+
+  const correo = sessionStorage.getItem('reset_correo') || ''
+  const respuesta_seguridad = sessionStorage.getItem('reset_answer') || ''
+
+  if (!correo || !respuesta_seguridad) {
+    generalError.value = 'La sesión de recuperación expiró. Vuelve a iniciar el proceso.'
+    return
+  }
+
+  try {
+    generalError.value = ''
+    successMessage.value = ''
+
+    await resetPassword({
+      correo,
+      respuesta_seguridad,
+      new_password: newPassword.value,
+    })
+
+    sessionStorage.removeItem('reset_correo')
+    sessionStorage.removeItem('reset_answer')
+
+    successMessage.value = 'Contraseña actualizada correctamente.'
+
+    setTimeout(() => {
+      router.push('/login')
+    }, 1200)
+  } catch (error) {
+    generalError.value =
+      error?.response?.data?.detail || 'No se pudo actualizar la contraseña.'
   }
 }
 </script>
@@ -60,9 +99,7 @@ const validateForm = (event) => {
       <div class="form-container">
         <form
           id="change-password-form"
-          action="/new_password"
-          method="POST"
-          @submit="validateForm"
+          @submit.prevent="handleSaveChanges"
         >
           <h3>Recuperar Contraseña</h3>
 
@@ -92,6 +129,14 @@ const validateForm = (event) => {
             </span>
           </div>
 
+          <div v-if="generalError" class="error-message">
+            {{ generalError }}
+          </div>
+
+          <div v-if="successMessage" class="success-message">
+            {{ successMessage }}
+          </div>
+
           <div class="input-container">
             <button type="submit">Guardar Cambios</button>
           </div>
@@ -100,3 +145,20 @@ const validateForm = (event) => {
     </div>
   </div>
 </template>
+
+<style>
+.error-message {
+  color: red;
+  font-size: 0.8em;
+  visibility: visible;
+  height: auto;
+}
+
+.success-message {
+  color: green;
+  font-size: 0.8em;
+  visibility: visible;
+  height: auto;
+  margin-top: 8px;
+}
+</style>

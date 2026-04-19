@@ -1,20 +1,26 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import '@/assets/css/inicio.css'
 import '@/assets/css/navbar.css'
 import '@/assets/css/food-panel.css'
 import '@/assets/css/popup_panel.css'
 import logo from '@/assets/images/logo.png'
+import { getReservations, updateReservation } from '@/services/reservations.service'
+
+const router = useRouter()
 
 const menuOpen = ref(false)
 const selectedGroup = ref('todas')
 const reservas = ref([])
+const errorMessage = ref('')
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
 }
+
+const normalizeEstado = (estado) => String(estado || '').trim().toLowerCase()
 
 const reservasFiltradas = computed(() => {
   if (selectedGroup.value === 'todas') {
@@ -22,19 +28,40 @@ const reservasFiltradas = computed(() => {
   }
 
   return reservas.value.filter(
-    (reserva) => String(reserva.estado).toLowerCase() === selectedGroup.value.toLowerCase()
+    (reserva) => normalizeEstado(reserva.estado) === selectedGroup.value.toLowerCase()
   )
 })
 
+const loadReservas = async () => {
+  try {
+    errorMessage.value = ''
+
+    const data = await getReservations()
+    reservas.value = Array.isArray(data)
+      ? data
+      : (data?.items || data?.results || [])
+  } catch (error) {
+    if (error?.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      router.push('/login')
+      return
+    }
+
+    errorMessage.value =
+      error?.response?.data?.detail || 'No se pudieron cargar las reservas.'
+  }
+}
+
 const goToNewReservation = () => {
-  window.location.href = '/form_reserva'
+  router.push('/form_reserva')
 }
 
 const editReserva = (idReserva) => {
-  window.location.href = `/editar_reserva/${idReserva}`
+  router.push(`/editar_reserva/${idReserva}`)
 }
 
-const deleteReserva = (idReserva) => {
+const deleteReserva = (reserva) => {
   Swal.fire({
     title: '¿Está seguro?',
     text: '¿Está seguro de cancelar la reserva?',
@@ -46,26 +73,30 @@ const deleteReserva = (idReserva) => {
       confirmButton: 'swal2-confirm',
       cancelButton: 'swal2-cancel',
     },
-  }).then((result) => {
+  }).then(async (result) => {
     if (result.isConfirmed) {
-      fetch(`/cancelar_reserva/${idReserva}`, {
-        method: 'POST',
-      }).then((response) => {
-        if (response.ok) {
-          Swal.fire('¡Cancelada!', 'La reserva ha sido cancelada.', 'success').then(() => {
-            window.location.reload()
-          })
-        } else {
-          Swal.fire('Error', 'No se pudo cancelar la reserva.', 'error')
-        }
-      })
+      try {
+        await updateReservation(reserva.id_reserva, {
+          ...reserva,
+          estado: 'Cancelado',
+        })
+
+        Swal.fire('¡Cancelada!', 'La reserva ha sido cancelada.', 'success')
+        await loadReservas()
+      } catch (error) {
+        Swal.fire('Error', 'No se pudo cancelar la reserva.', 'error')
+      }
     }
   })
 }
 
 const verDetalles = (idReserva) => {
-  window.location.href = `/receipt_reserva/${idReserva}`
+  router.push(`/receipt_reserva/${idReserva}`)
 }
+
+onMounted(async () => {
+  await loadReservas()
+})
 </script>
 
 <template>
@@ -93,11 +124,11 @@ const verDetalles = (idReserva) => {
       <div class="title">Mis Reservas</div>
 
       <div class="group-by-container">
-        <form method="GET" action="/user_reservations">
+        <form>
           <label for="group_by">Agrupar por:</label>
           <select id="group_by" v-model="selectedGroup" name="group_by">
             <option value="todas">Todas</option>
-            <option value="reservados">Reservados</option>
+            <option value="reservado">Reservado</option>
             <option value="cancelado">Cancelado</option>
           </select>
         </form>
@@ -105,6 +136,10 @@ const verDetalles = (idReserva) => {
         <button class="new-reserva-button" @click="goToNewReservation">
           Crear Nueva Reserva
         </button>
+      </div>
+
+      <div v-if="errorMessage" class="error-message">
+        {{ errorMessage }}
       </div>
 
       <div class="table-responsive">
@@ -128,7 +163,7 @@ const verDetalles = (idReserva) => {
               <td>
                 <div class="action-buttons">
                   <button
-                    v-if="reserva.estado === 'Reservado'"
+                    v-if="normalizeEstado(reserva.estado) === 'reservado'"
                     class="editReservaBtn"
                     @click="editReserva(reserva.id_reserva)"
                   >
@@ -136,15 +171,15 @@ const verDetalles = (idReserva) => {
                   </button>
 
                   <button
-                    v-if="reserva.estado === 'Reservado'"
+                    v-if="normalizeEstado(reserva.estado) === 'reservado'"
                     class="deleteReservaBtn"
-                    @click="deleteReserva(reserva.id_reserva)"
+                    @click="deleteReserva(reserva)"
                   >
                     <i class="fa-solid fa-trash"></i>
                   </button>
 
                   <button
-                    v-if="reserva.estado === 'Finalizado'"
+                    v-if="normalizeEstado(reserva.estado) === 'finalizado'"
                     class="verDetallesBtn"
                     @click="verDetalles(reserva.id_reserva)"
                   >
@@ -159,6 +194,14 @@ const verDetalles = (idReserva) => {
     </div>
   </div>
 </template>
+
+<style>
+.error-message {
+  color: red;
+  font-size: 0.9em;
+  margin: 12px 0;
+}
+</style>
     <style>
         .swal2-cancel {
             background-color: #192847 !important;

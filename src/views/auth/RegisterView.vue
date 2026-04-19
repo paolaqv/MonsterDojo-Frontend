@@ -1,10 +1,14 @@
 <script setup>
 import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import '@/assets/css/userforms.css'
 import logo from '@/assets/images/logo.png'
+import { register } from '@/services/auth.service'
 
+const router = useRouter()
 const menuOpen = ref(false)
+const registerError = ref('')
+const googleMessage = ref('')
 
 const form = ref({
   email: '',
@@ -28,8 +32,11 @@ const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
 }
 
-const validateForm = (event) => {
+const validateForm = () => {
   let valid = true
+
+  registerError.value = ''
+  googleMessage.value = ''
 
   errors.value.email = ''
   errors.value.name = ''
@@ -39,7 +46,8 @@ const validateForm = (event) => {
 
   const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/
   const phoneRegex = /^\d+$/
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
 
   if (!emailRegex.test(form.value.email)) {
     errors.value.email = 'Por favor ingresa un correo electrónico válido.'
@@ -68,9 +76,44 @@ const validateForm = (event) => {
     valid = false
   }
 
-  if (!valid) {
-    event.preventDefault()
+  if (!form.value.pregunta.trim()) {
+    registerError.value = 'La pregunta de seguridad es obligatoria.'
+    valid = false
   }
+
+  if (!form.value.respuesta.trim()) {
+    registerError.value = 'La respuesta de seguridad es obligatoria.'
+    valid = false
+  }
+
+  return valid
+}
+
+const handleRegister = async () => {
+  if (!validateForm()) return
+
+  try {
+    registerError.value = ''
+
+    await register({
+      nombre: form.value.name.trim(),
+      correo: form.value.email.trim(),
+      telefono: form.value.phone ? Number(form.value.phone) : null,
+      password: form.value.password,
+      pregunta_seguridad: form.value.pregunta.trim(),
+      respuesta_seguridad: form.value.respuesta.trim(),
+      rol_id_rol: 'user',
+    })
+
+    router.push('/login')
+  } catch (error) {
+    registerError.value =
+      error?.response?.data?.detail || 'No se pudo registrar el usuario.'
+  }
+}
+
+const handleGoogleRegister = () => {
+  googleMessage.value = 'El registro con Google aún no está disponible.'
 }
 </script>
 
@@ -93,7 +136,7 @@ const validateForm = (event) => {
 
     <div class="container">
       <div class="form-container">
-        <form id="registration-form" action="/register" method="POST" @submit="validateForm">
+        <form id="registration-form" @submit.prevent="handleRegister">
           <h3>Crear una cuenta</h3>
 
           <div class="input-container">
@@ -157,6 +200,10 @@ const validateForm = (event) => {
             />
           </div>
 
+          <div v-if="registerError" class="error-message">
+            {{ registerError }}
+          </div>
+
           <div class="input-container">
             <button type="submit">Registrarse</button>
             <span>
@@ -166,7 +213,12 @@ const validateForm = (event) => {
           </div>
 
           <div>
-            <a href="/register/google" class="google-btn">Registrarse con Google</a>
+            <a href="#" class="google-btn" @click.prevent="handleGoogleRegister">
+              Registrarse con Google
+            </a>
+            <div v-if="googleMessage" class="error-message">
+              {{ googleMessage }}
+            </div>
           </div>
         </form>
       </div>

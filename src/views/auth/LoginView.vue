@@ -1,16 +1,45 @@
 <script setup>
 import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import '@/assets/css/userforms.css'
 import logo from '@/assets/images/logo.png'
+import { login } from '@/services/auth.service'
+
+const router = useRouter()
 
 const menuOpen = ref(false)
-const email = ref('')
+const correo = ref('')
 const password = ref('')
 const loginAttempts = ref(0)
+const errorMessage = ref('')
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
+}
+
+const handleLogin = async () => {
+  try {
+    errorMessage.value = ''
+    loginAttempts.value = 0
+
+    const result = await login({
+      correo: correo.value,
+      password: password.value,
+    })
+
+    const role = result?.user?.rol_id_rol || result?.user?.rol || ''
+
+    if (String(role).toLowerCase().includes('admin')) {
+      router.push('/adminpanel')
+      return
+    }
+
+    router.push('/inicio_usuario')
+  } catch (error) {
+    loginAttempts.value += 1
+    errorMessage.value =
+      error?.response?.data?.detail || 'Correo electrónico o contraseña incorrectos.'
+  }
 }
 </script>
 
@@ -33,12 +62,12 @@ const toggleMenu = () => {
 
     <div class="container">
       <div class="form-container">
-        <form action="/login" method="POST">
+        <form @submit.prevent="handleLogin">
           <h3>Iniciar Sesión</h3>
 
           <div class="input-container">
             <label for="email">Correo Electrónico</label>
-            <input id="email" v-model="email" type="email" name="email" required />
+            <input id="email" v-model="correo" type="email" name="correo" required />
           </div>
 
           <div class="input-container">
@@ -46,7 +75,7 @@ const toggleMenu = () => {
             <input id="password" v-model="password" type="password" name="password" required />
 
             <div v-if="loginAttempts > 0" class="error-message">
-              Correo electrónico o contraseña incorrectos.
+              {{ errorMessage || 'Correo electrónico o contraseña incorrectos.' }}
             </div>
 
             <span>
@@ -64,7 +93,7 @@ const toggleMenu = () => {
           </div>
 
           <div class="input-container">
-            <a href="/login/google" class="google-btn">Iniciar sesión con Google</a>
+            <!-- <a href="/login/google" class="google-btn">Iniciar sesión con Google</a> -->
           </div>
         </form>
       </div>

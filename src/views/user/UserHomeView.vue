@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import '@/assets/css/inicio.css'
 import '@/assets/css/navbar.css'
 import logo from '@/assets/images/logo.png'
@@ -11,8 +11,12 @@ import food3 from '@/assets/images/food3.jpg'
 import food4 from '@/assets/images/food4.jpg'
 import food5 from '@/assets/images/food5.jpg'
 import food6 from '@/assets/images/food6.jpg'
+import { getCurrentUser } from '@/services/users.service'
+
+const router = useRouter()
 
 const menuOpen = ref(false)
+const user = ref(null)
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
@@ -21,6 +25,16 @@ const toggleMenu = () => {
 const closeMenu = () => {
   menuOpen.value = false
 }
+
+onMounted(async () => {
+  try {
+    user.value = await getCurrentUser()
+  } catch (error) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    router.push('/login')
+  }
+})
 </script>
 
 <template>

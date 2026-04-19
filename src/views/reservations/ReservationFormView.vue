@@ -1,9 +1,15 @@
- <script setup>
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+<script setup>
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import '@/assets/css/form-reserva.css'
 import logo from '@/assets/images/logo.png'
+import { getAvailableTables } from '@/services/tables.service'
+import { getProductCategories, getProducts } from '@/services/products.service'
+import { getGameCategories, getGames } from '@/services/games.service'
+import { checkoutReservation } from '@/services/reservations.service'
+
+const router = useRouter()
 
 const menuOpen = ref(false)
 const helpPopupOpen = ref(false)
@@ -24,6 +30,7 @@ const categoriaJuegosSeleccionada = ref('')
 const mesaSeleccionada = ref('')
 const productosInput = ref('')
 const juegoInput = ref('')
+const errorMessage = ref('')
 
 const productosSeleccionados = ref([])
 
@@ -37,6 +44,27 @@ const openHelpPopup = () => {
 
 const closeHelpPopup = () => {
   helpPopupOpen.value = false
+}
+
+const normalizeImage = (imagen) => {
+  if (!imagen) return ''
+
+  if (
+    imagen.startsWith('http://') ||
+    imagen.startsWith('https://') ||
+    imagen.startsWith('data:image')
+  ) {
+    return imagen
+  }
+
+  const base = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1'
+  const apiBase = base.replace('/api/v1', '')
+
+  if (imagen.startsWith('/')) {
+    return `${apiBase}${imagen}`
+  }
+
+  return `${apiBase}/${imagen}`
 }
 
 const total = computed(() => {
@@ -54,8 +82,11 @@ const productosVisibles = computed(() => {
 
   return productos.value.filter(
     (producto) =>
-      String(producto.categoria_producto_id_catProducto) ===
-      String(categoriaProductosSeleccionada.value)
+      String(
+        producto.categoria_producto_id_catProducto ??
+          producto.categoria_producto?.id_catProducto ??
+          producto.categoria_producto?.id_categoria
+      ) === String(categoriaProductosSeleccionada.value)
   )
 })
 
@@ -66,8 +97,11 @@ const juegosVisibles = computed(() => {
 
   return juegos.value.filter(
     (juego) =>
-      String(juego.categoria_juego_id_catJuego) ===
-      String(categoriaJuegosSeleccionada.value)
+      String(
+        juego.categoria_juego_id_catJuego ??
+          juego.categoria_juego?.id_catJuego ??
+          juego.categoria_juego?.id_categoria
+      ) === String(categoriaJuegosSeleccionada.value)
   )
 })
 
@@ -158,48 +192,131 @@ const confirmCancel = () => {
     },
   }).then((result) => {
     if (result.isConfirmed) {
-      window.location.href = '/inicio_usuario'
+      router.push('/inicio_usuario')
     }
   })
 }
 
-const showSuccessMessage = (event, form) => {
-  event.preventDefault()
-  Swal.fire({
-    title: '¡Éxito!',
-    text: 'Reserva confirmada exitosamente.',
-    icon: 'success',
-    confirmButtonText: 'OK',
-    customClass: {
-      confirmButton: 'swal2-confirm',
-    },
-  }).then(() => {
-    form.submit()
-  })
+const loadCatalogs = async () => {
+  const [categoriasProd, categoriasGame, productosData, juegosData] = await Promise.all([
+    getProductCategories(),
+    getGameCategories(),
+    getProducts(),
+    getGames(),
+  ])
+
+  categoriasProductos.value = Array.isArray(categoriasProd)
+    ? categoriasProd
+    : (categoriasProd?.items || categoriasProd?.results || [])
+
+  categoriasJuegos.value = Array.isArray(categoriasGame)
+    ? categoriasGame
+    : (categoriasGame?.items || categoriasGame?.results || [])
+
+  const productosArray = Array.isArray(productosData)
+    ? productosData
+    : (productosData?.items || productosData?.results || [])
+
+  const juegosArray = Array.isArray(juegosData)
+    ? juegosData
+    : (juegosData?.items || juegosData?.results || [])
+
+  productos.value = productosArray.map((producto) => ({
+    ...producto,
+    checked: false,
+    cantidad: 1,
+    imagen: normalizeImage(producto.imagen),
+  }))
+
+  juegos.value = juegosArray.map((juego) => ({
+    ...juego,
+    checked: false,
+    imagen: normalizeImage(juego.imagen),
+  }))
 }
 
-const submitConfirmarReserva = (event) => {
+const continuarReserva = async () => {
+  try {
+    errorMessage.value = ''
+
+    if (!fecha.value || !horaInicio.value || !horaFin.value) {
+      errorMessage.value = 'Debes completar fecha, hora de inicio y hora de fin.'
+      return
+    }
+
+    mesasDisponibles.value = await getAvailableTables({
+      date: fecha.value,
+      start_time: horaInicio.value,
+      end_time: horaFin.value,
+    })
+  } catch (error) {
+    errorMessage.value =
+      error?.response?.data?.detail || 'No se pudieron cargar las mesas disponibles.'
+  }
+}
+
+const submitConfirmarReserva = async (event) => {
+  event.preventDefault()
+
   if (!mesaSeleccionada.value) {
-    event.preventDefault()
     return
   }
 
-  const productosFormateados = []
-  let juegoFormateado = ''
+  const productosPayload = productosSeleccionados.value
+    .filter((item) => !item.esJuego)
+    .map((item) => ({
+      id_producto: item.id,
+      cantidad: item.cantidad,
+    }))
 
-  productosSeleccionados.value.forEach((item) => {
-    if (item.esJuego) {
-      juegoFormateado = `${item.id}:1`
-    } else {
-      productosFormateados.push(`${item.id}:${item.cantidad}`)
-    }
-  })
+  const juegoSeleccionado = productosSeleccionados.value.find((item) => item.esJuego)
 
-  productosInput.value = productosFormateados.join(',')
-  juegoInput.value = juegoFormateado
+  try {
+    await checkoutReservation({
+      date: fecha.value,
+      start_time: horaInicio.value,
+      end_time: horaFin.value,
+      mesa_id: Number(mesaSeleccionada.value),
+      productos: productosPayload,
+      juego_id: juegoSeleccionado ? juegoSeleccionado.id : null,
+    })
 
-  showSuccessMessage(event, event.target)
+    Swal.fire({
+      title: '¡Éxito!',
+      text: 'Reserva confirmada exitosamente.',
+      icon: 'success',
+      confirmButtonText: 'OK',
+      customClass: {
+        confirmButton: 'swal2-confirm',
+      },
+    }).then(() => {
+      router.push('/user_reservations')
+    })
+  } catch (error) {
+    Swal.fire({
+      title: 'Error',
+      text: error?.response?.data?.detail || 'No se pudo confirmar la reserva.',
+      icon: 'error',
+      confirmButtonText: 'OK',
+    })
+  }
 }
+
+onMounted(async () => {
+  try {
+    await loadCatalogs()
+  } catch (error) {
+    if (error?.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      router.push('/login')
+      return
+    }
+
+    errorMessage.value =
+      error?.response?.data?.detail || 'No se pudieron cargar los catálogos.'
+  }
+})
 </script>
 
 <template>
@@ -227,8 +344,11 @@ const submitConfirmarReserva = (event) => {
     <div class="container">
       <div class="form-section">
         <h2>Reservar una Mesa</h2>
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
 
-        <form id="reservaForm" method="GET" action="/continuar_reserva">
+        <form id="reservaForm" @submit.prevent="continuarReserva">
           <div class="reservation-info">
             <label for="date">Fecha</label>
             <input id="date" v-model="fecha" type="date" name="date" required />
@@ -443,10 +563,8 @@ const submitConfirmarReserva = (event) => {
 
         <form
           id="confirmarReservaForm"
-          method="POST"
-          action="/confirmar_reserva"
           :class="{ hidden: !mesasDisponibles.length }"
-          @submit="submitConfirmarReserva"
+          @submit.prevent="submitConfirmarReserva"
         >
           <input type="hidden" name="date" :value="fecha" />
           <input type="hidden" name="start_time" :value="horaInicio" />

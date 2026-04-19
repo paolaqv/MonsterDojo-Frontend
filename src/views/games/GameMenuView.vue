@@ -1,18 +1,39 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import '@/assets/css/game-menu.css'
 import '@/assets/css/popup_carrito.css'
 import logo from '@/assets/images/logo.png'
+import { getGameCategories, getGames } from '@/services/games.service'
+
+const router = useRouter()
 
 const menuOpen = ref(false)
 const categoriaFiltro = ref('all')
 const searchQuery = ref('')
 const categorias = ref([])
 const juegos = ref([])
+const errorMessage = ref('')
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
+}
+
+const normalizeImage = (imagen) => {
+  if (!imagen) return ''
+
+  if (imagen.startsWith('http://') || imagen.startsWith('https://') || imagen.startsWith('data:image')) {
+    return imagen
+  }
+
+  const base = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1'
+  const apiBase = base.replace('/api/v1', '')
+
+  if (imagen.startsWith('/')) {
+    return `${apiBase}${imagen}`
+  }
+
+  return `${apiBase}/${imagen}`
 }
 
 const juegosFiltrados = computed(() => {
@@ -29,6 +50,40 @@ const juegosFiltrados = computed(() => {
 
     return coincideCategoria && coincideBusqueda
   })
+})
+
+onMounted(async () => {
+  try {
+    errorMessage.value = ''
+
+    const [categoriasData, juegosData] = await Promise.all([
+      getGameCategories(),
+      getGames(),
+    ])
+
+    categorias.value = Array.isArray(categoriasData)
+      ? categoriasData
+      : (categoriasData?.items || categoriasData?.results || [])
+
+    const juegosArray = Array.isArray(juegosData)
+      ? juegosData
+      : (juegosData?.items || juegosData?.results || [])
+
+    juegos.value = juegosArray.map((juego) => ({
+      ...juego,
+      imagen: normalizeImage(juego.imagen),
+    }))
+  } catch (error) {
+    if (error?.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      router.push('/login')
+      return
+    }
+
+    errorMessage.value =
+      error?.response?.data?.detail || 'No se pudieron cargar los juegos.'
+  }
 })
 </script>
 
@@ -54,7 +109,7 @@ const juegosFiltrados = computed(() => {
     </div>
 
     <div class="container">
-      <form method="GET" action="/game-menu">
+      <form>
         <div class="filters">
           <div class="filter-option">
             <label for="category">Categoría:</label>
@@ -62,7 +117,7 @@ const juegosFiltrados = computed(() => {
               <option value="all">Todos</option>
               <option
                 v-for="categoria in categorias"
-                :key="categoria.id_catJuego || categoria.nombre"
+                :key="categoria.id_catJuego || categoria.id_categoria || categoria.nombre"
                 :value="categoria.nombre"
               >
                 {{ categoria.nombre }}
@@ -83,6 +138,10 @@ const juegosFiltrados = computed(() => {
           </div>
         </div>
       </form>
+
+      <div v-if="errorMessage" class="error-message">
+        {{ errorMessage }}
+      </div>
 
       <div class="game-menu">
         <div
