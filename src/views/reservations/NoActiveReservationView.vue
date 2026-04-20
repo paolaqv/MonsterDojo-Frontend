@@ -1,6 +1,9 @@
 <script setup>
 import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
+
+const router = useRouter()
 
 onMounted(() => {
   Swal.fire({
@@ -12,9 +15,8 @@ onMounted(() => {
       confirmButton: 'swal2-confirm',
       cancelButton: 'swal2-cancel',
     },
-    didClose: () => {
-      window.location.href = '/inicio_usuario'
-    },
+  }).then(() => {
+    router.push({ name: 'inicio_usuario' })
   })
 })
 </script>

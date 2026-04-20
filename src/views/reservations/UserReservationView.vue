@@ -15,6 +15,7 @@ const menuOpen = ref(false)
 const selectedGroup = ref('todas')
 const reservas = ref([])
 const errorMessage = ref('')
+const loading = ref(false)
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
@@ -34,9 +35,11 @@ const reservasFiltradas = computed(() => {
 
 const loadReservas = async () => {
   try {
+    loading.value = true
     errorMessage.value = ''
 
     const data = await getReservations()
+
     reservas.value = Array.isArray(data)
       ? data
       : (data?.items || data?.results || [])
@@ -50,15 +53,17 @@ const loadReservas = async () => {
 
     errorMessage.value =
       error?.response?.data?.detail || 'No se pudieron cargar las reservas.'
+  } finally {
+    loading.value = false
   }
 }
 
 const goToNewReservation = () => {
-  router.push('/form_reserva')
+  router.push({ name: 'form-reserva' })
 }
 
 const editReserva = (idReserva) => {
-  router.push(`/editar_reserva/${idReserva}`)
+  router.push({ name: 'editar-reserva', params: { id: idReserva } })
 }
 
 const deleteReserva = (reserva) => {
@@ -68,30 +73,59 @@ const deleteReserva = (reserva) => {
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Sí, cancelar',
-    cancelButtonText: 'No, cancelar',
+    cancelButtonText: 'No, volver',
     customClass: {
       confirmButton: 'swal2-confirm',
       cancelButton: 'swal2-cancel',
     },
   }).then(async (result) => {
-    if (result.isConfirmed) {
-      try {
-        await updateReservation(reserva.id_reserva, {
-          ...reserva,
-          estado: 'Cancelado',
-        })
+    if (!result.isConfirmed) return
 
-        Swal.fire('¡Cancelada!', 'La reserva ha sido cancelada.', 'success')
-        await loadReservas()
-      } catch (error) {
-        Swal.fire('Error', 'No se pudo cancelar la reserva.', 'error')
-      }
+    try {
+      await updateReservation(reserva.id_reserva, {
+        ...reserva,
+        estado: 'Cancelado',
+      })
+
+      await Swal.fire('¡Cancelada!', 'La reserva ha sido cancelada.', 'success')
+      await loadReservas()
+    } catch (error) {
+      Swal.fire(
+        'Error',
+        error?.response?.data?.detail || 'No se pudo cancelar la reserva.',
+        'error'
+      )
     }
   })
 }
 
 const verDetalles = (idReserva) => {
-  router.push(`/receipt_reserva/${idReserva}`)
+  router.push({ name: 'detalle-reserva', params: { id: idReserva } })
+}
+
+const formatFechaHora = (fecha) => {
+  if (!fecha) return '-'
+
+  const parsedDate = new Date(fecha)
+  if (Number.isNaN(parsedDate.getTime())) return fecha
+
+  return parsedDate.toLocaleString('es-BO', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+const formatMonto = (monto) => {
+  if (monto === null || monto === undefined || monto === '') return '-'
+
+  return new Intl.NumberFormat('es-BO', {
+    style: 'currency',
+    currency: 'BOB',
+    minimumFractionDigits: 2,
+  }).format(Number(monto))
 }
 
 onMounted(async () => {
@@ -106,7 +140,7 @@ onMounted(async () => {
         <img :src="logo" alt="Monster Dojo" />
       </div>
 
-      <button class="menu-toggle" @click="toggleMenu">
+      <button class="menu-toggle" type="button" @click="toggleMenu">
         <span class="fas fa-bars"></span>
       </button>
 
@@ -114,7 +148,7 @@ onMounted(async () => {
         <RouterLink to="/inicio_usuario">Home</RouterLink>
         <RouterLink to="/food-menu">Menu</RouterLink>
         <RouterLink to="/game-menu">Productos</RouterLink>
-        <RouterLink to="/user_reservations">Reservas</RouterLink>
+        <RouterLink to="/user_reservation">Reservas</RouterLink>
         <RouterLink to="/ver_pedidos">Pedidos</RouterLink>
         <RouterLink to="/perfil_user"><i class="fas fa-user"></i></RouterLink>
       </div>
@@ -124,25 +158,30 @@ onMounted(async () => {
       <div class="title">Mis Reservas</div>
 
       <div class="group-by-container">
-        <form>
+        <form @submit.prevent>
           <label for="group_by">Agrupar por:</label>
           <select id="group_by" v-model="selectedGroup" name="group_by">
             <option value="todas">Todas</option>
             <option value="reservado">Reservado</option>
             <option value="cancelado">Cancelado</option>
+            <option value="finalizado">Finalizado</option>
           </select>
         </form>
 
-        <button class="new-reserva-button" @click="goToNewReservation">
+        <button class="new-reserva-button" type="button" @click="goToNewReservation">
           Crear Nueva Reserva
         </button>
       </div>
 
-      <div v-if="errorMessage" class="error-message">
+      <div v-if="loading" class="info-message">
+        Cargando reservas...
+      </div>
+
+      <div v-else-if="errorMessage" class="error-message">
         {{ errorMessage }}
       </div>
 
-      <div class="table-responsive">
+      <div v-else class="table-responsive">
         <table>
           <thead>
             <tr>
@@ -155,15 +194,20 @@ onMounted(async () => {
           </thead>
 
           <tbody>
+            <tr v-if="reservasFiltradas.length === 0">
+              <td colspan="5">No hay reservas disponibles.</td>
+            </tr>
+
             <tr v-for="reserva in reservasFiltradas" :key="reserva.id_reserva">
               <td>{{ reserva.id_reserva }}</td>
-              <td>{{ reserva.fecha_hora }}</td>
+              <td>{{ formatFechaHora(reserva.fecha_hora) }}</td>
               <td>{{ reserva.estado }}</td>
-              <td>{{ reserva.monto_total }}</td>
+              <td>{{ formatMonto(reserva.monto_total) }}</td>
               <td>
                 <div class="action-buttons">
                   <button
                     v-if="normalizeEstado(reserva.estado) === 'reservado'"
+                    type="button"
                     class="editReservaBtn"
                     @click="editReserva(reserva.id_reserva)"
                   >
@@ -172,6 +216,7 @@ onMounted(async () => {
 
                   <button
                     v-if="normalizeEstado(reserva.estado) === 'reservado'"
+                    type="button"
                     class="deleteReservaBtn"
                     @click="deleteReserva(reserva)"
                   >
@@ -180,6 +225,7 @@ onMounted(async () => {
 
                   <button
                     v-if="normalizeEstado(reserva.estado) === 'finalizado'"
+                    type="button"
                     class="verDetallesBtn"
                     @click="verDetalles(reserva.id_reserva)"
                   >

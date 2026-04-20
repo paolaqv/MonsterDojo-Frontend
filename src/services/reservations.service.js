@@ -10,6 +10,11 @@ export const getReservationById = async (reservationId) => {
   return data
 }
 
+export const getReservationByIdAdmin = async (reservationId) => {
+  const { data } = await api.get(`/reservations/admin/${reservationId}`)
+  return data
+}
+
 export const createReservation = async (payload) => {
   const { data } = await api.post('/reservations/', payload)
   return data
@@ -22,6 +27,11 @@ export const updateReservation = async (reservationId, payload) => {
 
 export const getReservationDetails = async (reservationId) => {
   const { data } = await api.get(`/reservations/${reservationId}/details`)
+  return data
+}
+
+export const getReservationDetailsAdmin = async (reservationId) => {
+  const { data } = await api.get(`/reservations/admin/${reservationId}/details`)
   return data
 }
 

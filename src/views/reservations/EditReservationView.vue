@@ -1,32 +1,44 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import '@/assets/css/form-reserva.css'
 import logo from '@/assets/images/logo.png'
 
+import {
+  getReservationById,
+  getReservationDetails,
+  updateReservationCheckout,
+} from '@/services/reservations.service'
+import { getProducts } from '@/services/products.service'
+import { getGames } from '@/services/games.service'
+
+const route = useRoute()
+const router = useRouter()
+
 const menuOpen = ref(false)
-const formRef = ref(null)
-const productosInput = ref('')
-const juegoInput = ref('')
+const loading = ref(false)
+const saving = ref(false)
+const errorMessage = ref('')
+
+const reservationId = computed(() => route.params.id)
 
 const reserva = ref({
   id_reserva: '',
+  fecha_hora: '',
   mesa: {
     id_mesa: '',
     capacidad: '',
     ubicacion: '',
   },
-  productos_ids: [],
-  productos: {},
-  juego_id: null,
+  id_mesa: null,
 })
 
 const productos = ref([])
 const juegos = ref([])
 const detalleReservas = ref([])
-const registroJuego = ref(null)
 const productosSeleccionados = ref([])
+const selectedJuegoId = ref(null)
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
@@ -38,7 +50,39 @@ const total = computed(() => {
     .toFixed(2)
 })
 
+const formatDateParts = (fechaHora) => {
+  if (!fechaHora) {
+    return { date: '', start_time: '', end_time: '' }
+  }
+
+  const dateObj = new Date(fechaHora)
+  if (Number.isNaN(dateObj.getTime())) {
+    return { date: '', start_time: '', end_time: '' }
+  }
+
+  const start = new Date(dateObj)
+  const end = new Date(dateObj)
+  end.setMinutes(end.getMinutes() + 150)
+
+  const pad = (value) => String(value).padStart(2, '0')
+
+  return {
+    date: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
+    start_time: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
+    end_time: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
+  }
+}
+
 const addProducto = (id, nombre, precio, cantidad, esJuego = false) => {
+  const existe = productosSeleccionados.value.find(
+    (item) => item.id === id && item.esJuego === esJuego
+  )
+
+  if (existe) {
+    existe.cantidad = Number(cantidad)
+    return
+  }
+
   productosSeleccionados.value.push({
     id,
     nombre,
@@ -54,15 +98,12 @@ const removeProducto = (id, esJuego = false) => {
   )
 
   if (esJuego) {
+    selectedJuegoId.value = null
     const juego = juegos.value.find((item) => item.id_juego === id)
-    if (juego) {
-      juego.checked = false
-    }
+    if (juego) juego.checked = false
   } else {
     const producto = productos.value.find((item) => item.id_producto === id)
-    if (producto) {
-      producto.checked = false
-    }
+    if (producto) producto.checked = false
   }
 }
 
@@ -74,16 +115,9 @@ const toggleProducto = (producto, event) => {
   const cantidad = Number(producto.cantidad || 1)
 
   if (checked) {
-    const existe = productosSeleccionados.value.find(
-      (item) => item.id === id && item.esJuego === false
-    )
-    if (!existe) {
-      addProducto(id, nombre, precio, cantidad, false)
-    }
+    addProducto(id, nombre, precio, cantidad, false)
   } else {
-    productosSeleccionados.value = productosSeleccionados.value.filter(
-      (item) => !(item.id === id && item.esJuego === false)
-    )
+    removeProducto(id, false)
   }
 }
 
@@ -108,81 +142,142 @@ const selectJuego = (juego) => {
     (item) => item.esJuego === false
   )
 
+  selectedJuegoId.value = juego.id_juego
   addProducto(juego.id_juego, juego.nombre, Number(juego.precio_alquiler), 1, true)
 }
 
-const confirmCancel = () => {
-  Swal.fire({
+const confirmCancel = async () => {
+  const result = await Swal.fire({
     title: '¿Está seguro?',
-    text: '¿Está seguro de cancelar? Se perderán los datos.',
+    text: '¿Está seguro de cancelar? Se perderán los cambios no guardados.',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Sí, cancelar',
-    cancelButtonText: 'No, mantener',
+    cancelButtonText: 'No, volver',
     customClass: {
       confirmButton: 'swal2-confirm',
       cancelButton: 'swal2-cancel',
     },
-  }).then((result) => {
-    if (result.isConfirmed) {
-      window.location.href = '/user_reservations'
-    }
-  })
-}
-
-const showSuccessMessage = (event) => {
-  event.preventDefault()
-  Swal.fire({
-    title: '¡Éxito!',
-    text: 'Cambios guardados exitosamente.',
-    icon: 'success',
-    confirmButtonText: 'OK',
-    customClass: {
-      confirmButton: 'swal2-confirm',
-    },
-  }).then(() => {
-    formRef.value.submit()
-  })
-}
-
-const submitForm = (event) => {
-  const productosFormateados = []
-  let juegoFormateado = ''
-
-  productosSeleccionados.value.forEach((item) => {
-    if (item.esJuego) {
-      juegoFormateado = `${item.id}:1`
-    } else {
-      productosFormateados.push(`${item.id}:${item.cantidad}`)
-    }
   })
 
-  productosInput.value = productosFormateados.join(',')
-  juegoInput.value = juegoFormateado
-  showSuccessMessage(event)
+  if (result.isConfirmed) {
+    router.push({ name: 'user_reservation' })
+  }
 }
 
-onMounted(() => {
+const loadCatalogs = async () => {
+  const [productosData, juegosData] = await Promise.all([getProducts(), getGames()])
+
+  productos.value = (Array.isArray(productosData) ? productosData : productosData?.items || []).map(
+    (item) => ({
+      ...item,
+      checked: false,
+      cantidad: 1,
+    })
+  )
+
+  juegos.value = (Array.isArray(juegosData) ? juegosData : juegosData?.items || []).map((item) => ({
+    ...item,
+    checked: false,
+  }))
+}
+
+const loadReservation = async () => {
+  const [reservationData, detailsData] = await Promise.all([
+    getReservationById(reservationId.value),
+    getReservationDetails(reservationId.value),
+  ])
+
+  reserva.value = reservationData
+  detalleReservas.value = Array.isArray(detailsData) ? detailsData : detailsData?.items || []
+}
+
+const syncSelectionFromReservation = () => {
   productosSeleccionados.value = []
 
   detalleReservas.value.forEach((detalle) => {
-    addProducto(
-      detalle.producto_rel.id_producto,
-      detalle.producto_rel.nombre,
-      Number(detalle.precio),
-      Number(detalle.cantidad),
-      false
-    )
-  })
+    const productId =
+      detalle.producto_rel?.id_producto ||
+      detalle.producto?.id_producto ||
+      detalle.producto_id_producto
+    const nombre =
+      detalle.producto_rel?.nombre ||
+      detalle.producto?.nombre ||
+      detalle.nombre
+    const precio = Number(detalle.precio)
+    const cantidad = Number(detalle.cantidad)
 
-  if (registroJuego.value) {
-    addProducto(
-      registroJuego.value.juego_rel.id_juego,
-      registroJuego.value.juego_rel.nombre,
-      Number(registroJuego.value.precio),
-      Number(registroJuego.value.cantidad),
-      true
+    if (!productId) return
+
+    addProducto(productId, nombre, precio, cantidad, false)
+
+    const producto = productos.value.find((item) => item.id_producto === productId)
+    if (producto) {
+      producto.checked = true
+      producto.cantidad = cantidad
+    }
+  })
+}
+
+const submitForm = async () => {
+  try {
+    saving.value = true
+
+    const { date, start_time, end_time } = formatDateParts(reserva.value.fecha_hora)
+
+    const productosPayload = productosSeleccionados.value
+      .filter((item) => !item.esJuego)
+      .map((item) => ({
+        id_producto: item.id,
+        cantidad: item.cantidad,
+      }))
+
+    const payload = {
+      date,
+      start_time,
+      end_time,
+      mesa_id: reserva.value?.mesa?.id_mesa || reserva.value?.id_mesa,
+      productos: productosPayload,
+      juego_id: selectedJuegoId.value,
+    }
+
+    await updateReservationCheckout(reservationId.value, payload)
+
+    await Swal.fire({
+      title: '¡Éxito!',
+      text: 'Cambios guardados exitosamente.',
+      icon: 'success',
+      confirmButtonText: 'OK',
+      customClass: {
+        confirmButton: 'swal2-confirm',
+      },
+    })
+
+    router.push({ name: 'user_reservation' })
+  } catch (error) {
+    Swal.fire(
+      'Error',
+      error?.response?.data?.detail || 'No se pudo actualizar la reserva.',
+      'error'
     )
+  } finally {
+    saving.value = false
+  }
+}
+
+onMounted(async () => {
+  try {
+    loading.value = true
+    errorMessage.value = ''
+
+    await loadCatalogs()
+    await loadReservation()
+    syncSelectionFromReservation()
+  } catch (error) {
+    errorMessage.value =
+      error?.response?.data?.detail || 'No se pudieron cargar los datos de la reserva.'
+  } finally {
+    loading.value = false
   }
 })
 </script>
@@ -194,7 +289,7 @@ onMounted(() => {
         <img :src="logo" alt="Monster Dojo" />
       </div>
 
-      <button class="menu-toggle" @click="toggleMenu">
+      <button class="menu-toggle" type="button" @click="toggleMenu">
         <span class="fas fa-bars"></span>
       </button>
 
@@ -202,7 +297,7 @@ onMounted(() => {
         <RouterLink to="/inicio_usuario">Home</RouterLink>
         <RouterLink to="/food-menu">Menu</RouterLink>
         <RouterLink to="/game-menu">Productos</RouterLink>
-        <RouterLink to="/user_reservations">Reservas</RouterLink>
+        <RouterLink to="/user_reservation">Reservas</RouterLink>
         <RouterLink to="/ver_pedidos">Pedidos</RouterLink>
         <RouterLink to="/perfil_user"><i class="fas fa-user"></i></RouterLink>
       </div>
@@ -212,20 +307,16 @@ onMounted(() => {
       <div class="form-section">
         <h2>Editar Reserva</h2>
 
-        <form
-          id="editarReservaForm"
-          ref="formRef"
-          method="POST"
-          action="/actualizar_reserva"
-          @submit="submitForm"
-        >
-          <input type="hidden" name="id_reserva" :value="reserva.id_reserva" />
+        <div v-if="loading">Cargando datos...</div>
+        <div v-else-if="errorMessage" class="error-message">{{ errorMessage }}</div>
 
+        <form v-else id="editarReservaForm" @submit.prevent="submitForm">
           <div class="mesas-section">
             <h3>Mesa Seleccionada</h3>
             <p>
-              Mesa {{ reserva.mesa.id_mesa }} - Capacidad: {{ reserva.mesa.capacidad }} -
-              Ubicación: {{ reserva.mesa.ubicacion }}
+              Mesa {{ reserva.mesa?.id_mesa || reserva.id_mesa }} -
+              Capacidad: {{ reserva.mesa?.capacidad }} -
+              Ubicación: {{ reserva.mesa?.ubicacion }}
             </p>
           </div>
 
@@ -242,11 +333,7 @@ onMounted(() => {
                 </tr>
               </thead>
               <tbody>
-                <tr
-                  v-for="producto in productos"
-                  :key="producto.id_producto"
-                  :data-categoria="producto.categoria_producto_id_catProducto"
-                >
+                <tr v-for="producto in productos" :key="producto.id_producto">
                   <td>
                     <img
                       :src="producto.imagen"
@@ -259,8 +346,6 @@ onMounted(() => {
                       v-model="producto.checked"
                       type="checkbox"
                       class="producto-checkbox"
-                      :data-id="producto.id_producto"
-                      :data-precio="producto.precio"
                       @change="toggleProducto(producto, $event)"
                     />
                   </td>
@@ -270,8 +355,8 @@ onMounted(() => {
                     <input
                       v-model="producto.cantidad"
                       type="number"
-                      class="cantidad-producto"
                       min="1"
+                      class="cantidad-producto"
                       @change="updateCantidad(producto)"
                     />
                   </td>
@@ -292,11 +377,7 @@ onMounted(() => {
                 </tr>
               </thead>
               <tbody>
-                <tr
-                  v-for="juego in juegos"
-                  :key="juego.id_juego"
-                  :data-categoria="juego.categoria_juego_id_catJuego"
-                >
+                <tr v-for="juego in juegos" :key="juego.id_juego">
                   <td>
                     <img
                       :src="juego.imagen"
@@ -310,8 +391,6 @@ onMounted(() => {
                       type="radio"
                       name="juego_radio"
                       class="juego-radio"
-                      :data-id="juego.id_juego"
-                      :data-precio="juego.precio_alquiler"
                       @change="selectJuego(juego)"
                     />
                   </td>
@@ -335,16 +414,7 @@ onMounted(() => {
                 </tr>
               </thead>
               <tbody>
-                <tr
-                  v-for="item in productosSeleccionados"
-                  :key="`${item.esJuego}-${item.id}`"
-                  :data-id="item.id"
-                  :data-nombre="item.nombre"
-                  :data-precio="item.precio"
-                  :data-cantidad="item.cantidad"
-                  :data-total="(item.precio * item.cantidad).toFixed(2)"
-                  :data-es-juego="item.esJuego ? 'true' : 'false'"
-                >
+                <tr v-for="item in productosSeleccionados" :key="`${item.esJuego}-${item.id}`">
                   <td>{{ item.nombre }}</td>
                   <td>{{ Number(item.precio).toFixed(2) }}</td>
                   <td>{{ item.cantidad }}</td>
@@ -361,13 +431,17 @@ onMounted(() => {
                 </tr>
               </tbody>
             </table>
-            <div>Total: $<span id="total">{{ total }}</span></div>
+
+            <div>Total: Bs {{ total }}</div>
           </div>
 
-          <input v-model="productosInput" type="hidden" name="productos" />
-          <input v-model="juegoInput" type="hidden" name="juego" />
-          <button type="submit" id="guardarCambiosBtn">Guardar Cambios</button>
-          <button type="button" id="cancelarEdicionBtn" @click="confirmCancel">Cancelar</button>
+          <button type="submit" id="guardarCambiosBtn" :disabled="saving">
+            {{ saving ? 'Guardando...' : 'Guardar Cambios' }}
+          </button>
+
+          <button type="button" id="cancelarEdicionBtn" @click="confirmCancel">
+            Cancelar
+          </button>
         </form>
       </div>
     </div>

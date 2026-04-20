@@ -290,7 +290,7 @@ const submitConfirmarReserva = async (event) => {
         confirmButton: 'swal2-confirm',
       },
     }).then(() => {
-      router.push('/user_reservations')
+      router.push('/user_reservation')
     })
   } catch (error) {
     Swal.fire({
@@ -334,7 +334,7 @@ onMounted(async () => {
         <RouterLink to="/inicio_usuario">Home</RouterLink>
         <RouterLink to="/food-menu">Menu</RouterLink>
         <RouterLink to="/game-menu">Productos</RouterLink>
-        <RouterLink to="/user_reservations">Reservas</RouterLink>
+        <RouterLink to="/user_reservation">Reservas</RouterLink>
         <RouterLink to="/ver_pedidos">Pedidos</RouterLink>
         <RouterLink to="/perfil_user"><i class="fas fa-user"></i></RouterLink>
         <a href="#" id="helpBtn" @click.prevent="openHelpPopup"><i class="fas fa-question-circle"></i></a>

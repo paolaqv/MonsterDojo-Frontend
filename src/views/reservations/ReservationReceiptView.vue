@@ -1,20 +1,105 @@
 <script setup>
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import '@/assets/css/receipt.css'
+import {
+  getReservationByIdAdmin,
+  getReservationDetailsAdmin,
+} from '@/services/reservations.service'
 
-const reserva = {
+const route = useRoute()
+
+const loading = ref(false)
+const errorMessage = ref('')
+
+const reserva = ref({
   usuario: {
     nombre: '',
   },
   fecha_hora: '',
+})
+
+const productos = ref([])
+
+const formatDateTime = (value) => {
+  if (!value) return '-'
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+
+  return parsed.toLocaleString('es-BO', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
-const productos = []
+const formatMoney = (value) => {
+  const amount = Number(value || 0)
+  return amount.toFixed(2)
+}
 
-const totalReserva = ''
+const normalizedProductos = computed(() => {
+  return productos.value.map((item, index) => {
+    const nombre =
+      item.producto_rel?.nombre ||
+      item.producto?.nombre ||
+      item.nombre ||
+      `Producto ${index + 1}`
+
+    const cantidad = Number(item.cantidad || 0)
+    const precioUnitario = Number(
+      item.precio_unitario ?? item.precio ?? item.producto_rel?.precio ?? 0
+    )
+    const total = cantidad * precioUnitario
+
+    return {
+      key: item.id_detalleReserva || `${nombre}-${index}`,
+      nombre,
+      cantidad,
+      precio_unitario: precioUnitario,
+      total,
+    }
+  })
+})
+
+const totalReserva = computed(() => {
+  return normalizedProductos.value
+    .reduce((acc, item) => acc + Number(item.total || 0), 0)
+    .toFixed(2)
+})
+
+const loadReceipt = async () => {
+  try {
+    loading.value = true
+    errorMessage.value = ''
+
+    const reservationId = route.params.id
+
+    const [reservationData, detailsData] = await Promise.all([
+      getReservationByIdAdmin(reservationId),
+      getReservationDetailsAdmin(reservationId),
+    ])
+
+    reserva.value = reservationData
+    productos.value = Array.isArray(detailsData) ? detailsData : detailsData?.items || []
+  } catch (error) {
+    errorMessage.value =
+      error?.response?.data?.detail || 'No se pudo cargar el recibo.'
+  } finally {
+    loading.value = false
+  }
+}
 
 const printReceipt = () => {
   window.print()
 }
+
+onMounted(async () => {
+  await loadReceipt()
+})
 </script>
 
 <template>
@@ -22,38 +107,50 @@ const printReceipt = () => {
     <div class="receipt-section">
       <h2>Recibo</h2>
 
-      <div class="customer">
-        <label for="customer">Cliente:</label>
-        <p id="customer">{{ reserva.usuario.nombre }}</p>
-      </div>
+      <div v-if="loading">Cargando recibo...</div>
+      <div v-else-if="errorMessage">{{ errorMessage }}</div>
 
-      <div class="date">
-        <label for="date">Fecha:</label>
-        <p id="date">{{ reserva.fecha_hora }}</p>
-      </div>
+      <template v-else>
+        <div class="customer">
+          <label for="customer">Cliente:</label>
+          <p id="customer">{{ reserva.usuario?.nombre || '-' }}</p>
+        </div>
 
-      <ul class="receipt-info">
-        <li>
-          <span><strong>Producto</strong></span>
-          <span><strong>Cantidad</strong></span>
-          <span><strong>Precio Unitario</strong></span>
-          <span><strong>Precio Total</strong></span>
-        </li>
+        <div class="date">
+          <label for="date">Fecha:</label>
+          <p id="date">{{ formatDateTime(reserva.fecha_hora) }}</p>
+        </div>
 
-        <li v-for="item in productos" :key="item.nombre">
-          <span>{{ item.nombre }}</span>
-          <span>{{ item.cantidad }}</span>
-          <span>{{ item.precio_unitario }} Bs.</span>
-          <span>{{ item.total }} Bs.</span>
-        </li>
-      </ul>
+        <ul class="receipt-info">
+          <li>
+            <span><strong>Producto</strong></span>
+            <span><strong>Cantidad</strong></span>
+            <span><strong>Precio Unitario</strong></span>
+            <span><strong>Precio Total</strong></span>
+          </li>
 
-      <div class="total">
-        <label for="total">Total:</label>
-        <p id="total">{{ totalReserva }} Bs.</p>
-      </div>
+          <li v-if="normalizedProductos.length === 0">
+            <span>No hay productos registrados.</span>
+            <span>-</span>
+            <span>-</span>
+            <span>-</span>
+          </li>
 
-      <button class="print-btn" @click="printReceipt">Imprimir Recibo</button>
+          <li v-for="item in normalizedProductos" :key="item.key">
+            <span>{{ item.nombre }}</span>
+            <span>{{ item.cantidad }}</span>
+            <span>{{ formatMoney(item.precio_unitario) }} Bs.</span>
+            <span>{{ formatMoney(item.total) }} Bs.</span>
+          </li>
+        </ul>
+
+        <div class="total">
+          <label for="total">Total:</label>
+          <p id="total">{{ totalReserva }} Bs.</p>
+        </div>
+
+        <button class="print-btn" @click="printReceipt">Imprimir Recibo</button>
+      </template>
     </div>
   </div>
 </template>

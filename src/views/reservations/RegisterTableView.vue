@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import Swal from 'sweetalert2'
 import '@/assets/css/food-panel.css'
@@ -7,8 +7,18 @@ import '@/assets/css/popup_panel.css'
 import logo from '@/assets/images/logo.png'
 import mesaImg from '@/assets/images/mesa.png'
 import comedorImg from '@/assets/images/comedor.png'
+import {
+  archiveTable,
+  createTable,
+  getTableById,
+  getTables,
+  unarchiveTable,
+  updateTable,
+} from '@/services/tables.service'
 
 const menuOpen = ref(false)
+const loading = ref(false)
+const errorMessage = ref('')
 const search = ref('')
 const groupBy = ref('')
 const mesas = ref([])
@@ -29,6 +39,21 @@ const editForm = ref({
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
+}
+
+const loadTables = async () => {
+  try {
+    loading.value = true
+    errorMessage.value = ''
+
+    const data = await getTables()
+    mesas.value = Array.isArray(data) ? data : data?.items || data?.results || []
+  } catch (error) {
+    errorMessage.value =
+      error?.response?.data?.detail || 'No se pudieron cargar las mesas.'
+  } finally {
+    loading.value = false
+  }
 }
 
 const filteredMesas = computed(() => {
@@ -64,6 +89,21 @@ const closeEditPopup = () => {
   showEditPopup.value = false
 }
 
+const resetRegForm = () => {
+  regForm.value = {
+    capacidad: '',
+    ubicacion: '',
+  }
+}
+
+const resetEditForm = () => {
+  editForm.value = {
+    id: '',
+    capacidad: '',
+    ubicacion: '',
+  }
+}
+
 const confirmCancel = (formType) => {
   Swal.fire({
     title: '¿Está seguro?',
@@ -77,76 +117,44 @@ const confirmCancel = (formType) => {
       cancelButton: 'swal2-cancel',
     },
   }).then((result) => {
-    if (result.isConfirmed) {
-      if (formType === 'regForm') {
-        closePopup()
-        regForm.value = {
-          capacidad: '',
-          ubicacion: '',
-        }
-      } else if (formType === 'editForm') {
-        closeEditPopup()
-        editForm.value = {
-          id: '',
-          capacidad: '',
-          ubicacion: '',
-        }
-      }
-    }
-  })
-}
+    if (!result.isConfirmed) return
 
-const showSuccessMessage = (popupId, formId, message) => {
-  Swal.fire({
-    title: '¡Éxito!',
-    text: message,
-    icon: 'success',
-    confirmButtonText: 'OK',
-    customClass: {
-      confirmButton: 'swal2-confirm',
-    },
-  }).then(() => {
-    if (popupId === 'contactPopup') {
+    if (formType === 'regForm') {
       closePopup()
-      regForm.value = {
-        capacidad: '',
-        ubicacion: '',
-      }
-    } else if (popupId === 'editPopup') {
+      resetRegForm()
+    } else if (formType === 'editForm') {
       closeEditPopup()
-      editForm.value = {
-        id: '',
-        capacidad: '',
-        ubicacion: '',
-      }
+      resetEditForm()
     }
-    window.location.href = '/registro_mesa'
   })
 }
 
 const handleMesaSubmit = async (event) => {
   event.preventDefault()
 
-  const formData = new FormData()
-  formData.append('capacidad', regForm.value.capacidad)
-  formData.append('ubicacion', regForm.value.ubicacion)
-
   try {
-    const response = await fetch('/add_mesa', {
-      method: 'POST',
-      body: formData,
+    await createTable({
+      capacidad: Number(regForm.value.capacidad),
+      ubicacion: regForm.value.ubicacion,
     })
 
-    if (response.ok) {
-      showSuccessMessage('contactPopup', 'regForm', 'Producto registrado con éxito')
-    } else {
-      const text = await response.text()
-      throw new Error(text)
-    }
+    await Swal.fire({
+      title: '¡Éxito!',
+      text: 'Mesa registrada con éxito.',
+      icon: 'success',
+      confirmButtonText: 'OK',
+      customClass: {
+        confirmButton: 'swal2-confirm',
+      },
+    })
+
+    closePopup()
+    resetRegForm()
+    await loadTables()
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: 'Hubo un problema al registrar el producto.',
+      text: error?.response?.data?.detail || 'Hubo un problema al registrar la mesa.',
       icon: 'error',
       confirmButtonText: 'OK',
       customClass: {
@@ -158,8 +166,7 @@ const handleMesaSubmit = async (event) => {
 
 const openEditMesa = async (mesaId) => {
   try {
-    const response = await fetch(`/get_mesa/${mesaId}`)
-    const data = await response.json()
+    const data = await getTableById(mesaId)
 
     editForm.value = {
       id: mesaId,
@@ -169,33 +176,36 @@ const openEditMesa = async (mesaId) => {
 
     showEditPopup.value = true
   } catch (error) {
-    console.error('Error al cargar los datos del producto:', error)
+    Swal.fire('Error', 'No se pudo cargar la mesa.', 'error')
   }
 }
 
 const handleEditMesaSubmit = async (event) => {
   event.preventDefault()
 
-  const formData = new FormData()
-  formData.append('capacidad', editForm.value.capacidad)
-  formData.append('ubicacion', editForm.value.ubicacion)
-
   try {
-    const response = await fetch(`/update_mesa/${editForm.value.id}`, {
-      method: 'POST',
-      body: formData,
+    await updateTable(editForm.value.id, {
+      capacidad: Number(editForm.value.capacidad),
+      ubicacion: editForm.value.ubicacion,
     })
 
-    if (response.ok) {
-      showSuccessMessage('editPopup', 'editForm', 'Producto actualizado con éxito')
-    } else {
-      const text = await response.text()
-      throw new Error(text)
-    }
+    await Swal.fire({
+      title: '¡Éxito!',
+      text: 'Mesa actualizada con éxito.',
+      icon: 'success',
+      confirmButtonText: 'OK',
+      customClass: {
+        confirmButton: 'swal2-confirm',
+      },
+    })
+
+    closeEditPopup()
+    resetEditForm()
+    await loadTables()
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: 'Hubo un problema al actualizar el producto.',
+      text: error?.response?.data?.detail || 'Hubo un problema al actualizar la mesa.',
       icon: 'error',
       confirmButtonText: 'OK',
       customClass: {
@@ -210,7 +220,7 @@ const confirmDelete = (event, mesaId) => {
 
   Swal.fire({
     title: '¿Está seguro?',
-    text: '¿Está seguro de archivar el producto?',
+    text: '¿Está seguro de archivar la mesa?',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Sí, archivar',
@@ -220,31 +230,22 @@ const confirmDelete = (event, mesaId) => {
       cancelButton: 'swal2-cancel',
     },
   }).then(async (result) => {
-    if (result.isConfirmed) {
-      try {
-        const response = await fetch(`/delete_mesa/${mesaId}`, {
-          method: 'POST',
-        })
+    if (!result.isConfirmed) return
 
-        if (response.ok) {
-          Swal.fire('¡Archivado!', 'El producto ha sido archivado.', 'success').then(() => {
-            window.location.href = '/registro_mesa'
-          })
-        } else {
-          const text = await response.text()
-          throw new Error(text)
-        }
-      } catch (error) {
-        Swal.fire({
-          title: 'Error',
-          text: 'Hubo un problema al archivar el producto.',
-          icon: 'error',
-          confirmButtonText: 'OK',
-          customClass: {
-            confirmButton: 'swal2-confirm',
-          },
-        })
-      }
+    try {
+      await archiveTable(mesaId)
+      await Swal.fire('¡Archivado!', 'La mesa ha sido archivada.', 'success')
+      await loadTables()
+    } catch (error) {
+      Swal.fire({
+        title: 'Error',
+        text: error?.response?.data?.detail || 'Hubo un problema al archivar la mesa.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+        customClass: {
+          confirmButton: 'swal2-confirm',
+        },
+      })
     }
   })
 }
@@ -264,20 +265,25 @@ const confirmUnarchive = (event, mesaId) => {
       cancelButton: 'swal2-cancel',
     },
   }).then(async (result) => {
-    if (result.isConfirmed) {
-      try {
-        await fetch(`/unarchive_mesa/${mesaId}`, {
-          method: 'POST',
-        })
-        Swal.fire('¡Desarchivado!', 'El producto ha sido desarchivado.', 'success').then(() =>
-          window.location.reload()
-        )
-      } catch (error) {
-        Swal.fire('Error', 'No se pudo desarchivar el producto.', 'error')
-      }
+    if (!result.isConfirmed) return
+
+    try {
+      await unarchiveTable(mesaId)
+      await Swal.fire('¡Desarchivado!', 'La mesa ha sido desarchivada.', 'success')
+      await loadTables()
+    } catch (error) {
+      Swal.fire(
+        'Error',
+        error?.response?.data?.detail || 'No se pudo desarchivar la mesa.',
+        'error'
+      )
     }
   })
 }
+
+onMounted(async () => {
+  await loadTables()
+})
 </script>
 
 <template>
@@ -294,7 +300,7 @@ const confirmUnarchive = (event, mesaId) => {
       <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
         <li><RouterLink to="/adminpanel">Inicio</RouterLink></li>
         <li><RouterLink to="/userspanel">Usuarios</RouterLink></li>
-        <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
+        <li><RouterLink to="/game-menu">Juegos</RouterLink></li>
         <li><RouterLink to="/food_panel">Comida</RouterLink></li>
         <li><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
         <li><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
@@ -307,29 +313,32 @@ const confirmUnarchive = (event, mesaId) => {
       <div class="title">Registro de mesas</div>
 
       <div class="actions-container">
-        <form method="GET" action="/registro_mesa">
+        <form @submit.prevent>
           <div class="search-container">
             <input v-model="search" type="text" name="search" placeholder="Buscar mesa" />
-            <button type="submit">Buscar <i class="fa-solid fa-search"></i></button>
+            <button type="button">Buscar <i class="fa-solid fa-search"></i></button>
           </div>
 
           <div class="group-by-container">
             <label for="group_by">Agrupar por:</label>
             <select id="group_by" v-model="groupBy" name="group_by">
               <option value="">Todos</option>
-              <option value="archivados">Productos Archivados</option>
+              <option value="archivados">Mesas Archivadas</option>
             </select>
           </div>
         </form>
 
         <div class="add-buttons">
-          <button id="addProductBtn" @click="openAddPopup">
+          <button id="addProductBtn" type="button" @click="openAddPopup">
             <i class="fa-solid fa-chair"></i> Registrar mesa
           </button>
         </div>
       </div>
 
-      <div class="table-responsive">
+      <div v-if="loading">Cargando mesas...</div>
+      <div v-else-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+
+      <div v-else class="table-responsive">
         <table>
           <thead>
             <tr>
@@ -341,18 +350,23 @@ const confirmUnarchive = (event, mesaId) => {
           </thead>
 
           <tbody>
+            <tr v-if="filteredMesas.length === 0">
+              <td colspan="4">No hay mesas registradas.</td>
+            </tr>
+
             <tr v-for="mesa in filteredMesas" :key="mesa.id_mesa">
               <td>{{ mesa.id_mesa }}</td>
               <td>{{ mesa.capacidad }}</td>
               <td>{{ mesa.ubicacion }}</td>
               <td>
                 <div class="action-buttons">
-                  <button class="editProductBtn" @click="openEditMesa(mesa.id_mesa)">
+                  <button type="button" class="editProductBtn" @click="openEditMesa(mesa.id_mesa)">
                     <i class="fa-solid fa-edit"></i>
                   </button>
 
                   <button
                     v-if="mesa.activo"
+                    type="button"
                     class="deleteProductBtn"
                     @click="confirmDelete($event, mesa.id_mesa)"
                   >
@@ -361,6 +375,7 @@ const confirmUnarchive = (event, mesaId) => {
 
                   <button
                     v-else
+                    type="button"
                     class="unarchiveProductBtn"
                     @click="confirmUnarchive($event, mesa.id_mesa)"
                   >
@@ -377,26 +392,18 @@ const confirmUnarchive = (event, mesaId) => {
     <div v-if="showAddPopup" id="contactPopup" class="popup">
       <div class="popup-content">
         <span class="close-btn" @click="closePopup">&times;</span>
-        <img :src="mesaImg" alt="Product Icon" class="product-icon" />
+        <img :src="mesaImg" alt="Mesa Icon" class="product-icon" />
         <h2>REGISTRO DE MESA</h2>
 
-        <form
-          id="regForm"
-          action="/add_mesa"
-          method="POST"
-          enctype="multipart/form-data"
-          @submit="handleMesaSubmit"
-        >
+        <form id="regForm" @submit="handleMesaSubmit">
           <div class="form-group">
             <label for="capacidad">Capacidad</label>
             <input id="capacidad" v-model="regForm.capacidad" type="number" name="capacidad" required />
-            <span id="error-capacidad" class="error-message"></span>
           </div>
 
           <div class="form-group">
             <label for="ubicacion">Ubicación</label>
             <input id="ubicacion" v-model="regForm.ubicacion" type="text" name="ubicacion" required />
-            <span id="error-ubicacion" class="error-message"></span>
           </div>
 
           <div class="buttons">
@@ -410,10 +417,10 @@ const confirmUnarchive = (event, mesaId) => {
     <div v-if="showEditPopup" id="editPopup" class="popup">
       <div class="popup-content">
         <span class="close-btn" @click="closeEditPopup">&times;</span>
-        <img :src="comedorImg" alt="Product Icon" class="product-icon" />
+        <img :src="comedorImg" alt="Comedor Icon" class="product-icon" />
         <h2>EDITAR MESA</h2>
 
-        <form id="editForm" method="POST" @submit="handleEditMesaSubmit">
+        <form id="editForm" @submit="handleEditMesaSubmit">
           <div class="form-group">
             <label for="edit_capacidad">Capacidad</label>
             <input
@@ -423,7 +430,6 @@ const confirmUnarchive = (event, mesaId) => {
               name="capacidad"
               required
             />
-            <span id="edit-error-capacidad" class="error-message"></span>
           </div>
 
           <div class="form-group">
@@ -435,7 +441,6 @@ const confirmUnarchive = (event, mesaId) => {
               name="ubicacion"
               required
             />
-            <span id="edit-error-ubicacion" class="error-message"></span>
           </div>
 
           <div class="buttons">
