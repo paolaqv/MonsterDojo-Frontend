@@ -102,7 +102,7 @@ const handleRegister = async () => {
       password: form.value.password,
       pregunta_seguridad: form.value.pregunta.trim(),
       respuesta_seguridad: form.value.respuesta.trim(),
-      rol_id_rol: 'user',
+      rol_id_rol: '2',
     })
 
     router.push('/login')

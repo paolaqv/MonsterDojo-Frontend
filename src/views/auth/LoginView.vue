@@ -44,7 +44,7 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div>
+  <div class = "login-page">
     <nav class="navbar">
       <div class="nav-logo">
         <img :src="logo" alt="Monster Dojo" />

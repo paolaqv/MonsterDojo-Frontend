@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import '@/assets/css/inicio.css'
+import '@/assets/css/inicio-usuario.css'
 import '@/assets/css/navbar.css'
 import logo from '@/assets/images/logo.png'
 import logoMd from '@/assets/images/logo_md.png'
@@ -38,7 +38,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="container">
+  <div class="home-page">
     <header>
       <div class="navbar">
         <div class="nav-logo">
@@ -53,7 +53,7 @@ onMounted(async () => {
           <RouterLink to="/inicio_usuario" @click="closeMenu">Home</RouterLink>
           <RouterLink to="/food-menu" @click="closeMenu">Menu</RouterLink>
           <RouterLink to="/game-menu" @click="closeMenu">Productos</RouterLink>
-          <RouterLink to="/user_reservations" @click="closeMenu">Reservas</RouterLink>
+          <RouterLink to="/user_reservation" @click="closeMenu">Reservas</RouterLink>
           <RouterLink to="/ver_pedidos" @click="closeMenu">Pedidos</RouterLink>
           <RouterLink to="/perfil_user" @click="closeMenu"><i class="fas fa-user"></i></RouterLink>
         </div>
@@ -76,11 +76,11 @@ onMounted(async () => {
       <div class="card">
         <img :src="food1" alt="" />
         <div class="details">
-          <center>
-            <div class="details-sub">
-              <h5>Bebidas preparadas</h5>
-            </div>
-          </center>
+        <div class="text-center">
+          <div class="details-sub">
+            <h5>Bebidas preparadas</h5>
+          </div>
+        </div>
         </div>
       </div>
 

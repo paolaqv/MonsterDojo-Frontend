@@ -243,6 +243,10 @@ const continuarReserva = async () => {
       errorMessage.value = 'Debes completar fecha, hora de inicio y hora de fin.'
       return
     }
+    if (horaFin.value <= horaInicio.value) {
+      errorMessage.value = 'La hora de fin debe ser mayor que la hora de inicio.'
+      return
+    }
 
     mesasDisponibles.value = await getAvailableTables({
       date: fecha.value,
@@ -371,23 +375,29 @@ onMounted(async () => {
 
         <div class="mesas-section" :class="{ hidden: !mesasDisponibles.length }">
           <h3>Mesas Disponibles</h3>
-          <ul>
-            <li v-for="mesaInfo in mesasVisibles" :key="mesaInfo.mesa.id_mesa">
-              <input
-                v-model="mesaSeleccionada"
-                type="radio"
-                name="mesa"
-                class="mesa-radio"
-                :value="mesaInfo.mesa.id_mesa"
-                :disabled="!mesaInfo.disponible"
-              />
+        <ul class="mesas-list">
+          <li
+            v-for="mesaInfo in mesasVisibles"
+            :key="mesaInfo.mesa.id_mesa"
+            class="mesa-item"
+          >
+            <input
+              v-model="mesaSeleccionada"
+              type="radio"
+              name="mesa"
+              class="mesa-radio"
+              :value="mesaInfo.mesa.id_mesa"
+              :disabled="!mesaInfo.disponible"
+            />
+            <div class="mesa-texto">
               Mesa {{ mesaInfo.mesa.id_mesa }} - Capacidad: {{ mesaInfo.mesa.capacidad }} -
               Ubicación: {{ mesaInfo.mesa.ubicacion }}
-              <span v-if="!mesaInfo.disponible">
+              <span v-if="!mesaInfo.disponible" class="mesa-disponibilidad">
                 (Disponible a partir de {{ mesaInfo.proxima_disponibilidad }})
               </span>
-            </li>
-          </ul>
+            </div>
+          </li>
+        </ul>
           <p
             id="mesa-error"
             style="color: red;"

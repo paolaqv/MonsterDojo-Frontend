@@ -26,3 +26,13 @@ export const getAvailableTables = async ({ date, start_time, end_time }) => {
   })
   return data
 }
+
+export const archiveTable = async (tableId) => {
+  const { data } = await api.put(`/tables/${tableId}/archive`)
+  return data
+}
+
+export const unarchiveTable = async (tableId) => {
+  const { data } = await api.put(`/tables/${tableId}/unarchive`)
+  return data
+}

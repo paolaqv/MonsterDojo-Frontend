@@ -210,6 +210,15 @@ const routes = [
     name: 'verify_security_question',
     component: VerifySecurityQuestionView,
   },
+  {
+  path: '/logout',
+  name: 'logout',
+  beforeEnter: () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    return '/login'
+  }
+}
 ]
 
 const router = createRouter({

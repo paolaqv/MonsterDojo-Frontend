@@ -23,6 +23,11 @@ const errors = ref({
   email: '',
   phone: '',
 })
+const handleLogout = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  router.push('/login')
+}
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
@@ -116,7 +121,7 @@ onMounted(async () => {
 
       <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
         <li><RouterLink to="/inicio_usuario">Inicio</RouterLink></li>
-        <li><RouterLink to="/logout">Cerrar Sesión</RouterLink></li>
+        <a href="#" @click.prevent="handleLogout">Cerrar Sesión</a>
       </ul>
     </nav>
 

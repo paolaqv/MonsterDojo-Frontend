@@ -51,25 +51,30 @@ const total = computed(() => {
 })
 
 const formatDateParts = (fechaHora) => {
-  if (!fechaHora) {
+  if (!fechaHora || typeof fechaHora !== 'string') {
     return { date: '', start_time: '', end_time: '' }
   }
 
-  const dateObj = new Date(fechaHora)
-  if (Number.isNaN(dateObj.getTime())) {
+  const [datePart, timePartRaw] = fechaHora.split('T')
+  if (!datePart || !timePartRaw) {
     return { date: '', start_time: '', end_time: '' }
   }
 
-  const start = new Date(dateObj)
-  const end = new Date(dateObj)
-  end.setMinutes(end.getMinutes() + 150)
+  const [hours, minutes] = timePartRaw.slice(0, 5).split(':').map(Number)
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return { date: '', start_time: '', end_time: '' }
+  }
+
+  const startMinutes = hours * 60 + minutes
+  const endMinutes = startMinutes + 150
 
   const pad = (value) => String(value).padStart(2, '0')
 
   return {
-    date: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
-    start_time: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
-    end_time: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
+    date: datePart,
+    start_time: `${pad(hours)}:${pad(minutes)}`,
+    end_time: `${pad(Math.floor((endMinutes % 1440) / 60))}:${pad(endMinutes % 60)}`,
   }
 }
 
@@ -188,7 +193,19 @@ const loadReservation = async () => {
     getReservationDetails(reservationId.value),
   ])
 
-  reserva.value = reservationData
+  console.log('reservationData =>', reservationData)
+
+reserva.value = {
+  ...reservationData,
+  id_mesa:
+    reservationData?.id_mesa ??
+    reservationData?.mesa_id ??
+    reservationData?.mesa_id_mesa ??
+    reservationData?.mesa?.id_mesa ??
+    null,
+  mesa: reservationData?.mesa ?? reservationData?.mesa_rel ?? null,
+}
+
   detalleReservas.value = Array.isArray(detailsData) ? detailsData : detailsData?.items || []
 }
 
@@ -232,15 +249,20 @@ const submitForm = async () => {
         cantidad: item.cantidad,
       }))
 
-    const payload = {
-      date,
-      start_time,
-      end_time,
-      mesa_id: reserva.value?.mesa?.id_mesa || reserva.value?.id_mesa,
-      productos: productosPayload,
-      juego_id: selectedJuegoId.value,
-    }
-
+const payload = {
+  date,
+  start_time,
+  end_time,
+  mesa_id:
+    reserva.value?.id_mesa ??
+    reserva.value?.mesa_id ??
+    reserva.value?.mesa_id_mesa ??
+    reserva.value?.mesa?.id_mesa ??
+    null,
+  productos: productosPayload,
+  ...(selectedJuegoId.value ? { juego_id: selectedJuegoId.value } : {}),
+}
+console.log('payload update reservation =>', payload)
     await updateReservationCheckout(reservationId.value, payload)
 
     await Swal.fire({
@@ -311,14 +333,15 @@ onMounted(async () => {
         <div v-else-if="errorMessage" class="error-message">{{ errorMessage }}</div>
 
         <form v-else id="editarReservaForm" @submit.prevent="submitForm">
-          <div class="mesas-section">
-            <h3>Mesa Seleccionada</h3>
-            <p>
-              Mesa {{ reserva.mesa?.id_mesa || reserva.id_mesa }} -
-              Capacidad: {{ reserva.mesa?.capacidad }} -
-              Ubicación: {{ reserva.mesa?.ubicacion }}
-            </p>
-          </div>
+<div class="mesas-section">
+  <h3>Mesa Seleccionada</h3>
+  <p v-if="reserva.id_mesa">
+    Mesa {{ reserva.id_mesa }}
+    <span v-if="reserva.mesa?.capacidad"> - Capacidad: {{ reserva.mesa.capacidad }}</span>
+    <span v-if="reserva.mesa?.ubicacion"> - Ubicación: {{ reserva.mesa.ubicacion }}</span>
+  </p>
+  <p v-else>No se pudo obtener la mesa de la reserva.</p>
+</div>
 
           <div class="productos-section">
             <h3>Selecciona Productos</h3>
