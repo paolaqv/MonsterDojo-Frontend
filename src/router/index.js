@@ -116,14 +116,16 @@ const routes = [
     component: ShoppingCartPopup,
   },
   {
-    path: '/receipt_pedido',
+    path: '/receipt_pedido/:id',
     name: 'receipt_pedido',
     component: OrderReceiptView,
+    props: true,
   },
   {
-    path: '/receipt_pedidoUser',
+    path: '/receipt_pedidoUser/:id',
     name: 'receipt_pedidoUser',
     component: UserOrderReceiptView,
+    props: true,
   },
   {
     path: '/receipt',
@@ -192,9 +194,10 @@ const routes = [
     component: MyOrdersView,
   },
   {
-    path: '/verDetalle-pedido',
+    path: '/verDetalle-pedido/:id',
     name: 'verDetalle-pedido',
     component: OrderDetailView,
+    props: true,
   },
   {
     path: '/verDetalle-reserva/:id',

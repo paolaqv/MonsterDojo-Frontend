@@ -1,24 +1,114 @@
 <script setup>
-import { RouterLink } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import '@/assets/css/inicio.css'
 import '@/assets/css/navbar.css'
 import '@/assets/css/food-panel.css'
 import '@/assets/css/popup_panel.css'
 import logo from '@/assets/images/logo.png'
+import { getOrderById, getOrderDetails } from '@/services/orders.service'
 
-const mesa = {
-  ubicacion: '',
-}
+const route = useRoute()
+const router = useRouter()
 
-const pedido = {
+const menuOpen = ref(false)
+const loading = ref(false)
+const errorMessage = ref('')
+
+const pedido = ref({
   id_pedido: '',
   fecha_hora: '',
   estado: '',
+  mesa_rel: {
+    ubicacion: '',
+  },
+})
+
+const productos = ref([])
+
+const toggleMenu = () => {
+  menuOpen.value = !menuOpen.value
 }
 
-const productos = []
+const orderId = computed(() => route.params.id)
 
-const totalPedido = ''
+const formatDateTime = (value) => {
+  if (!value) return '-'
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+
+  return parsed.toLocaleString('es-BO', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+const formatMoney = (value) => {
+  const amount = Number(value || 0)
+  return amount.toFixed(2)
+}
+
+const normalizedProductos = computed(() => {
+  return productos.value.map((item, index) => {
+    const nombre =
+      item.producto_rel?.nombre ||
+      item.producto?.nombre ||
+      item.nombre ||
+      `Producto ${index + 1}`
+
+    const cantidad = Number(item.cantidad || 0)
+    const precioUnitario = Number(
+      item.precio_unitario ?? item.precio ?? item.producto_rel?.precio ?? 0
+    )
+    const total = cantidad * precioUnitario
+
+    return {
+      key: item.id_detallePedido || `${nombre}-${index}`,
+      nombre,
+      cantidad,
+      precio_unitario: precioUnitario,
+      total,
+    }
+  })
+})
+
+const totalPedido = computed(() => {
+  return normalizedProductos.value
+    .reduce((acc, item) => acc + Number(item.total || 0), 0)
+    .toFixed(2)
+})
+
+const loadOrderDetails = async () => {
+  try {
+    loading.value = true
+    errorMessage.value = ''
+
+    const [orderData, detailsData] = await Promise.all([
+      getOrderById(orderId.value),
+      getOrderDetails(orderId.value),
+    ])
+
+    pedido.value = orderData
+    productos.value = Array.isArray(detailsData) ? detailsData : detailsData?.items || []
+  } catch (error) {
+    errorMessage.value =
+      error?.response?.data?.detail || 'No se pudieron cargar los detalles del pedido.'
+  } finally {
+    loading.value = false
+  }
+}
+
+const goToReceipt = () => {
+  router.push(`/receipt_pedidoUser/${pedido.value.id_pedido}`)
+}
+
+onMounted(async () => {
+  await loadOrderDetails()
+})
 </script>
 
 <template>
@@ -28,15 +118,15 @@ const totalPedido = ''
         <img :src="logo" alt="Monster Dojo" />
       </div>
 
-      <button class="menu-toggle">
+      <button class="menu-toggle" type="button" @click="toggleMenu">
         <span class="fas fa-bars"></span>
       </button>
 
-      <div class="navbar-right">
+      <div class="navbar-right" :class="{ active: menuOpen }">
         <RouterLink to="/inicio_usuario">Home</RouterLink>
         <RouterLink to="/food-menu">Menu</RouterLink>
         <RouterLink to="/game-menu">Productos</RouterLink>
-        <RouterLink to="/user_reservations">Reservas</RouterLink>
+        <RouterLink to="/user_reservation">Reservas</RouterLink>
         <RouterLink to="/ver_pedidos">Pedidos</RouterLink>
         <RouterLink to="/perfil_user"><i class="fas fa-user"></i></RouterLink>
       </div>
@@ -45,50 +135,59 @@ const totalPedido = ''
     <div class="container">
       <div class="title">Detalles del Pedido</div>
 
-      <div class="header-container">
-        <div>
-          <p><strong>Mesa:</strong> {{ mesa.ubicacion }}</p>
+      <div v-if="loading">Cargando detalles...</div>
+      <div v-else-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+
+      <template v-else>
+        <div class="header-container">
+          <div>
+            <p><strong>Mesa:</strong> {{ pedido.mesa_rel?.ubicacion || '-' }}</p>
+          </div>
+
+          <div>
+            <p><strong>Fecha y hora del pedido:</strong> {{ formatDateTime(pedido.fecha_hora) }}</p>
+            <p><strong>Estado:</strong> {{ pedido.estado || '-' }}</p>
+          </div>
         </div>
 
-        <div>
-          <p><strong>Fecha y hora del pedido:</strong> {{ pedido.fecha_hora }}</p>
-          <p><strong>Estado:</strong> {{ pedido.estado }}</p>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio unitario</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr v-if="normalizedProductos.length === 0">
+                <td colspan="4">No hay productos registrados para este pedido.</td>
+              </tr>
+
+              <tr v-for="producto in normalizedProductos" :key="producto.key">
+                <td>{{ producto.nombre }}</td>
+                <td>{{ producto.cantidad }}</td>
+                <td>{{ formatMoney(producto.precio_unitario) }}</td>
+                <td>{{ formatMoney(producto.total) }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
 
-      <div class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>Producto</th>
-              <th>Cantidad</th>
-              <th>Precio unitario</th>
-              <th>Total</th>
-            </tr>
-          </thead>
+        <div class="table-summary">
+          <p><strong>Total:</strong> {{ totalPedido }} Bs.</p>
+        </div>
 
-          <tbody>
-            <tr v-for="producto in productos" :key="producto.nombre">
-              <td>{{ producto.nombre }}</td>
-              <td>{{ producto.cantidad }}</td>
-              <td>{{ producto.precio_unitario }}</td>
-              <td>{{ producto.total }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="table-summary">
-        <p><strong>Total:</strong> {{ totalPedido }} Bs.</p>
-      </div>
-
-      <button
-        v-if="pedido.estado === 'Finalizado'"
-        class="recibo-btn"
-        @click="window.location.href = `/receipt_pedidoUser/${pedido.id_pedido}`"
-      >
-        Ver Recibo
-      </button>
+        <button
+          v-if="String(pedido.estado || '').trim().toLowerCase() === 'finalizado'"
+          class="recibo-btn"
+          @click="goToReceipt"
+        >
+          Ver Recibo
+        </button>
+      </template>
     </div>
   </div>
 </template>

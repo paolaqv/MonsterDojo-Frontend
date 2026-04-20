@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import '@/assets/css/form-reserva.css'
 import logo from '@/assets/images/logo.png'
@@ -8,8 +8,13 @@ import { getActiveReservation } from '@/services/reservations.service'
 import { getProducts } from '@/services/products.service'
 import { createOrder } from '@/services/orders.service'
 
+const router = useRouter()
+
 const menuOpen = ref(false)
+const loading = ref(false)
+const errorMessage = ref('')
 const productosSeleccionados = ref([])
+
 const reservaActiva = ref({
   mesa: {
     id_mesa: '',
@@ -17,10 +22,32 @@ const reservaActiva = ref({
     ubicacion: '',
   },
 })
+
 const productos = ref([])
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
+}
+
+const normalizeImage = (imagen) => {
+  if (!imagen) return ''
+
+  if (
+    imagen.startsWith('http://') ||
+    imagen.startsWith('https://') ||
+    imagen.startsWith('data:image')
+  ) {
+    return imagen
+  }
+
+  const base = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1'
+  const apiBase = base.replace('/api/v1', '')
+
+  if (imagen.startsWith('/')) {
+    return `${apiBase}${imagen}`
+  }
+
+  return `${apiBase}/${imagen}`
 }
 
 const total = computed(() => {
@@ -30,6 +57,13 @@ const total = computed(() => {
 })
 
 const addProducto = (id, nombre, precio, cantidad) => {
+  const existe = productosSeleccionados.value.find((item) => item.id === id)
+
+  if (existe) {
+    existe.cantidad = Number(cantidad)
+    return
+  }
+
   productosSeleccionados.value.push({
     id,
     nombre,
@@ -64,6 +98,7 @@ const updateCantidad = (producto) => {
 
 const removeProducto = (id) => {
   productosSeleccionados.value = productosSeleccionados.value.filter((item) => item.id !== id)
+
   const productoOriginal = productos.value.find((producto) => producto.id_producto === id)
   if (productoOriginal) {
     productoOriginal.checked = false
@@ -84,7 +119,7 @@ const confirmCancel = () => {
     },
   }).then((result) => {
     if (result.isConfirmed) {
-      window.location.href = '/inicio_usuario'
+      router.push({ name: 'inicio_usuario' })
     }
   })
 }
@@ -99,34 +134,76 @@ const showSuccessMessage = () => {
       confirmButton: 'swal2-confirm',
     },
   }).then(() => {
-    window.location.href = '/ver_pedidos'
+    router.push('/ver_pedidos')
   })
 }
 
 const realizarPedido = async () => {
-  const payload = productosSeleccionados.value.map((producto) => ({
-    id_producto: producto.id,
-    cantidad: producto.cantidad,
-  }))
+  if (!productosSeleccionados.value.length) {
+    Swal.fire('Aviso', 'Debes seleccionar al menos un producto.', 'warning')
+    return
+  }
 
-  await createOrder({
-    productos: payload,
-  })
+  try {
+    const payload = productosSeleccionados.value.map((producto) => ({
+      id_producto: producto.id,
+      cantidad: producto.cantidad,
+    }))
 
-  showSuccessMessage()
+    await createOrder({
+      productos: payload,
+    })
+
+    showSuccessMessage()
+  } catch (error) {
+    Swal.fire(
+      'Error',
+      error?.response?.data?.detail || 'No se pudo realizar el pedido.',
+      'error'
+    )
+  }
 }
 
 onMounted(async () => {
-  const reserva = await getActiveReservation()
-  const productosResponse = await getProducts()
+  try {
+    loading.value = true
+    errorMessage.value = ''
 
-  reservaActiva.value = reserva
+    const [reserva, productosResponse] = await Promise.all([
+      getActiveReservation(),
+      getProducts(),
+    ])
 
-  productos.value = (Array.isArray(productosResponse) ? productosResponse : []).map((producto) => ({
-    ...producto,
-    checked: false,
-    cantidad: 1,
-  }))
+    reservaActiva.value = reserva
+
+    const productosArray = Array.isArray(productosResponse)
+      ? productosResponse
+      : (productosResponse?.items || productosResponse?.results || [])
+
+    productos.value = productosArray.map((producto) => ({
+      ...producto,
+      checked: false,
+      cantidad: 1,
+      imagen: normalizeImage(producto.imagen),
+    }))
+  } catch (error) {
+    if (error?.response?.status === 404) {
+      router.push('/sin_reserva')
+      return
+    }
+
+    if (error?.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      router.push('/login')
+      return
+    }
+
+    errorMessage.value =
+      error?.response?.data?.detail || 'No se pudieron cargar los datos del pedido.'
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
@@ -137,7 +214,7 @@ onMounted(async () => {
         <img :src="logo" alt="Monster Dojo" />
       </div>
 
-      <button class="menu-toggle" @click="toggleMenu">
+      <button class="menu-toggle" type="button" @click="toggleMenu">
         <span class="fas fa-bars"></span>
       </button>
 
@@ -145,7 +222,7 @@ onMounted(async () => {
         <RouterLink to="/inicio_usuario">Home</RouterLink>
         <RouterLink to="/food-menu">Menu</RouterLink>
         <RouterLink to="/game-menu">Productos</RouterLink>
-        <RouterLink to="/user_reservations">Reservas</RouterLink>
+        <RouterLink to="/user_reservation">Reservas</RouterLink>
         <RouterLink to="/ver_pedidos">Pedidos</RouterLink>
         <RouterLink to="/perfil_user"><i class="fas fa-user"></i></RouterLink>
       </div>
@@ -155,110 +232,119 @@ onMounted(async () => {
       <div class="form-section">
         <h2>Agregar Pedido</h2>
 
-        <div class="mesas-section">
-          <h3>Mesa Seleccionada</h3>
-          <p>
-            Mesa {{ reservaActiva.mesa.id_mesa }} -
-            Capacidad: {{ reservaActiva.mesa.capacidad }} -
-            Ubicación: {{ reservaActiva.mesa.ubicacion }}
-          </p>
-        </div>
+        <div v-if="loading">Cargando datos...</div>
+        <div v-else-if="errorMessage" class="error-message">{{ errorMessage }}</div>
 
-        <div class="productos-section">
-          <h3>Selecciona Productos</h3>
+        <template v-else>
+          <div class="mesas-section">
+            <h3>Mesa Seleccionada</h3>
+            <p>
+              Mesa {{ reservaActiva.mesa?.id_mesa || reservaActiva.mesa_id_mesa }} -
+              Capacidad: {{ reservaActiva.mesa?.capacidad || '-' }} -
+              Ubicación: {{ reservaActiva.mesa?.ubicacion || '-' }}
+            </p>
+          </div>
 
-          <table id="productos-table">
-            <thead>
-              <tr>
-                <th>Imagen</th>
-                <th>Seleccionar</th>
-                <th>Nombre</th>
-                <th>Precio</th>
-                <th>Cantidad</th>
-              </tr>
-            </thead>
+          <div class="productos-section">
+            <h3>Selecciona Productos</h3>
 
-            <tbody>
-              <tr v-for="producto in productos" :key="producto.id_producto">
-                <td>
-                  <img
-                    :src="producto.imagen"
-                    :alt="`Imagen de ${producto.nombre}`"
-                    width="50"
-                  />
-                </td>
+            <table id="productos-table">
+              <thead>
+                <tr>
+                  <th>Imagen</th>
+                  <th>Seleccionar</th>
+                  <th>Nombre</th>
+                  <th>Precio</th>
+                  <th>Cantidad</th>
+                </tr>
+              </thead>
 
-                <td>
-                  <input
-                    v-model="producto.checked"
-                    type="checkbox"
-                    class="producto-checkbox"
-                    :data-id="producto.id_producto"
-                    :data-precio="producto.precio"
-                    @change="toggleProducto(producto, $event)"
-                  />
-                </td>
+              <tbody>
+                <tr v-for="producto in productos" :key="producto.id_producto">
+                  <td>
+                    <img
+                      :src="producto.imagen"
+                      :alt="`Imagen de ${producto.nombre}`"
+                      width="50"
+                    />
+                  </td>
 
-                <td>{{ producto.nombre }}</td>
-                <td>{{ producto.precio }}</td>
+                  <td>
+                    <input
+                      v-model="producto.checked"
+                      type="checkbox"
+                      class="producto-checkbox"
+                      :data-id="producto.id_producto"
+                      :data-precio="producto.precio"
+                      @change="toggleProducto(producto, $event)"
+                    />
+                  </td>
 
-                <td>
-                  <input
-                    v-model="producto.cantidad"
-                    type="number"
-                    class="cantidad-producto"
-                    min="1"
-                    @change="updateCantidad(producto)"
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                  <td>{{ producto.nombre }}</td>
+                  <td>{{ producto.precio }}</td>
 
-        <div class="productos-seleccionados-section">
-          <h3>Productos Seleccionados</h3>
+                  <td>
+                    <input
+                      v-model="producto.cantidad"
+                      type="number"
+                      class="cantidad-producto"
+                      min="1"
+                      @change="updateCantidad(producto)"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-          <table id="productos-seleccionados-table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Precio</th>
-                <th>Cantidad</th>
-                <th>Total</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
+          <div class="productos-seleccionados-section">
+            <h3>Productos Seleccionados</h3>
 
-            <tbody>
-              <tr v-for="producto in productosSeleccionados" :key="producto.id">
-                <td>{{ producto.nombre }}</td>
-                <td>{{ Number(producto.precio).toFixed(2) }}</td>
-                <td>{{ producto.cantidad }}</td>
-                <td>{{ (producto.precio * producto.cantidad).toFixed(2) }}</td>
-                <td>
-                  <button
-                    type="button"
-                    class="eliminar-btn"
-                    @click="removeProducto(producto.id)"
-                  >
-                    <i class="fas fa-trash-alt"></i>
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+            <table id="productos-seleccionados-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Precio</th>
+                  <th>Cantidad</th>
+                  <th>Total</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
 
-          <div>Total: $<span id="total">{{ total }}</span></div>
-        </div>
+              <tbody>
+                <tr v-if="productosSeleccionados.length === 0">
+                  <td colspan="5">No hay productos seleccionados.</td>
+                </tr>
 
-        <button type="button" id="realizarPedidoBtn" @click="realizarPedido">
-          Realizar Pedido
-        </button>
+                <tr v-for="producto in productosSeleccionados" :key="producto.id">
+                  <td>{{ producto.nombre }}</td>
+                  <td>{{ Number(producto.precio).toFixed(2) }}</td>
+                  <td>{{ producto.cantidad }}</td>
+                  <td>{{ (producto.precio * producto.cantidad).toFixed(2) }}</td>
+                  <td>
+                    <button
+                      type="button"
+                      class="eliminar-btn"
+                      @click="removeProducto(producto.id)"
+                    >
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
 
-        <button type="button" id="cancelarPedidoBtn" @click="confirmCancel">
-          Cancelar
-        </button>
+            <div>Total: Bs <span id="total">{{ total }}</span></div>
+          </div>
+
+          <button type="button" id="realizarPedidoBtn" @click="realizarPedido">
+            Realizar Pedido
+          </button>
+
+          <button type="button" id="cancelarPedidoBtn" @click="confirmCancel">
+            Cancelar
+          </button>
+        </template>
       </div>
     </div>
   </div>

@@ -5,6 +5,11 @@ export const getReservations = async (params = {}) => {
   return data
 }
 
+export const getActiveReservation = async () => {
+  const { data } = await api.get('/reservations/active')
+  return data
+}
+
 export const getReservationById = async (reservationId) => {
   const { data } = await api.get(`/reservations/${reservationId}`)
   return data
