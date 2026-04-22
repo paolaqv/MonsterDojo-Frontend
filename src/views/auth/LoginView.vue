@@ -25,6 +25,9 @@ const handleLogin = async () => {
       correo: correo.value,
       password: password.value,
     })
+    localStorage.setItem('token', result.access_token)
+    localStorage.setItem('user', JSON.stringify(result.user))
+
 
     const role = result?.user?.rol_id_rol || result?.user?.rol || ''
 

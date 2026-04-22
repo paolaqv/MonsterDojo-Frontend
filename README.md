@@ -42,4 +42,5 @@ npm run build
 npm install vue-router
 npm install axios
 npm install sweetalert2
+npm install lucide-vue-next @vueuse/motion v-wave
 ```

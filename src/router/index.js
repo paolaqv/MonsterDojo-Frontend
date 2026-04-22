@@ -32,10 +32,11 @@ import MyOrdersView from '@/views/orders/MyOrdersView.vue'
 import OrderDetailView from '@/views/orders/OrderDetailView.vue'
 import ReservationDetailsView from '@/views/reservations/ReservationDetailsView.vue'
 import VerifySecurityQuestionView from '@/views/auth/VerifySecurityQuestionView.vue'
-import SecurityPanelView from '../views/security/SecurityPanelView.vue'
+import SecurityPanelView from '@/views/security/SecurityPanelView.vue'
 import WaiterPanelView from '@/views/mesero/WaiterPanelView.vue'
 import GamePanelView from '@/views/games/GamePanelView.vue'
 import ReservationsAdminPanelView from '@/views/reservations/ReservationsAdminPanelView.vue'
+
 const routes = [
   {
     path: '/',
@@ -43,85 +44,188 @@ const routes = [
     component: HomeView,
   },
   {
-    path: '/game-menu',
-    name: 'game-menu',
-    component: GameMenuView,
-  },
-{
-  path: '/adminpanel',
-  name: 'adminpanel',
-  component: AdminPanelView,
-  meta: { roles: ['encargadoLocal'] },
-},
-  {
-    path: '/agregar-pedido',
-    name: 'agregar-pedido',
-    component: AddOrderView,
+    path: '/login',
+    name: 'login',
+    component: LoginView,
   },
   {
-    path: '/editar-reserva/:id',
-    name: 'editar-reserva',
-    component: EditReservationView,
-    props: true,
+    path: '/register',
+    name: 'register',
+    component: RegisterView,
   },
   {
     path: '/error',
     name: 'error',
     component: ErrorView,
   },
+
+  // --------- vistas públicas / cliente ----------
+  {
+    path: '/inicio_usuario',
+    name: 'inicio_usuario',
+    component: UserHomeView,
+    meta: { roles: ['cliente'] },
+  },
   {
     path: '/food-menu',
     name: 'food-menu',
     component: FoodMenuView,
   },
-{
-  path: '/food_panel',
-  name: 'food_panel',
-  component: FoodPanelView,
-  meta: { roles: ['encargadoLocal', 'mesero'] },
-},
+  {
+    path: '/game-menu',
+    name: 'game-menu',
+    component: GameMenuView,
+  },
   {
     path: '/form-reserva',
     name: 'form-reserva',
     component: ReservationFormView,
+    meta: { roles: ['cliente'] },
   },
   {
-    path: '/inicio_usuario',
-    name: 'inicio_usuario',
-    component: UserHomeView,
+    path: '/user_reservation',
+    name: 'user_reservation',
+    component: UserReservationView,
+    meta: { roles: ['cliente'] },
   },
   {
-    path: '/login',
-    name: 'login',
-    component: LoginView,
+    path: '/reservas_panelUser',
+    name: 'reservas_panelUser',
+    component: ReservationsPanelView,
+    meta: { roles: ['cliente'] },
   },
   {
-    path: '/new_password',
-    name: 'new_password',
-    component: NewPasswordView,
+    path: '/reserva-active',
+    name: 'reserva-active',
+    component: ActiveReservationView,
+    meta: { roles: ['cliente'] },
   },
-{
-  path: '/pedidos_panel',
-  name: 'pedidos_panel',
-  component: OrdersPanelView,
-  meta: { roles: ['encargadoLocal', 'mesero'] },
-},
-{
-  path: '/perfil_admin',
-  name: 'perfil_admin',
-  component: AdminProfileView,
-  meta: { roles: ['encargadoLocal', 'encargadoSeguridad', 'mesero'] },
-},
+  {
+    path: '/sin_reserva',
+    name: 'sin_reserva',
+    component: NoActiveReservationView,
+    meta: { roles: ['cliente'] },
+  },
+  {
+    path: '/ver_pedidos',
+    name: 'ver_pedidos',
+    component: UserOrdersView,
+    meta: { roles: ['cliente'] },
+  },
+  {
+    path: '/ver_Mispedidos',
+    name: 'ver_Mispedidos',
+    component: MyOrdersView,
+    meta: { roles: ['cliente'] },
+  },
   {
     path: '/perfil_user',
     name: 'perfil_user',
     component: UserProfileView,
+    meta: { roles: ['cliente'] },
+  },
+
+  // --------- paneles por rol ----------
+  {
+    path: '/adminpanel',
+    name: 'adminpanel',
+    component: AdminPanelView,
+    meta: { roles: ['encargadoLocal'] },
   },
   {
-    path: '/carrito',
-    name: 'carrito',
-    component: ShoppingCartPopup,
+    path: '/panel-seguridad',
+    name: 'panel-seguridad',
+    component: SecurityPanelView,
+    meta: { roles: ['encargadoSeguridad'] },
   },
+  {
+    path: '/panel-mesero',
+    name: 'panel-mesero',
+    component: WaiterPanelView,
+    meta: { roles: ['mesero'] },
+  },
+
+  // --------- perfiles personal ----------
+  {
+    path: '/perfil_admin',
+    name: 'perfil_admin',
+    component: AdminProfileView,
+    meta: { roles: ['encargadoLocal', 'encargadoSeguridad', 'mesero'] },
+  },
+
+  // --------- módulo seguridad ----------
+  {
+    path: '/userspanel',
+    name: 'userspanel',
+    component: UsersPanelView,
+    meta: { permissions: ['ver_usuarios'] },
+  },
+
+  // --------- operación ----------
+  {
+    path: '/food_panel',
+    name: 'food_panel',
+    component: FoodPanelView,
+    meta: { permissions: ['ver_productos'] },
+  },
+  {
+    path: '/game_panel',
+    name: 'game_panel',
+    component: GamePanelView,
+    meta: { permissions: ['ver_juegos'] },
+  },
+  {
+    path: '/pedidos_panel',
+    name: 'pedidos_panel',
+    component: OrdersPanelView,
+    meta: { permissions: ['ver_pedidos_detalle'] },
+  },
+  {
+    path: '/reservas_panel',
+    name: 'reservas_panel',
+    component: ReservationsAdminPanelView,
+    meta: { permissions: ['ver_reservas_detalle'] },
+  },
+  {
+    path: '/registro_mesa',
+    name: 'registro_mesa',
+    component: RegisterTableView,
+    meta: { permissions: ['ver_mesas'] },
+  },
+
+  // --------- detalles / edición ----------
+  {
+    path: '/agregar-pedido',
+    name: 'agregar-pedido',
+    component: AddOrderView,
+    meta: { permissions: ['gestionar_pedidos'] },
+  },
+  {
+    path: '/editar-reserva/:id',
+    name: 'editar-reserva',
+    component: EditReservationView,
+    props: true,
+    meta: { roles: ['cliente'] },
+  },
+  {
+    path: '/verDetalle-pedido/:id',
+    name: 'verDetalle-pedido',
+    component: OrderDetailView,
+    props: true,
+    meta: { permissions: ['ver_pedidos_detalle'] },
+  },
+  {
+    path: '/verDetalle-reserva/:id',
+    name: 'verDetalle-reserva',
+    component: ReservationDetailsView,
+    props: true,
+    meta: {
+      permissionsAny: ['ver_reservas_detalle'],
+      rolesAny: ['cliente'],
+    },
+  },
+
+  // --------- recibos ----------
   {
     path: '/receipt_pedido/:id',
     name: 'receipt_pedido',
@@ -145,27 +249,13 @@ const routes = [
     component: ReservationReceiptView,
     props: true,
   },
+
+  // --------- auth recovery ----------
   {
-    path: '/register',
-    name: 'register',
-    component: RegisterView,
+    path: '/new_password',
+    name: 'new_password',
+    component: NewPasswordView,
   },
-{
-  path: '/registro_mesa',
-  name: 'registro_mesa',
-  component: RegisterTableView,
-  meta: { roles: ['encargadoLocal'] },
-},
-  {
-    path: '/reserva-active',
-    name: 'reserva-active',
-    component: ActiveReservationView,
-  },
-{
-  path: '/reservas_panelUser',
-  name: 'reservas_panelUser',
-  component: ReservationsPanelView,
-},
   {
     path: '/reset_password',
     name: 'reset_password',
@@ -177,80 +267,26 @@ const routes = [
     component: ResetSecurityQuestionView,
   },
   {
-    path: '/sin_reserva',
-    name: 'sin_reserva',
-    component: NoActiveReservationView,
-  },
-  {
-    path: '/user_reservation',
-    name: 'user_reservation',
-    component: UserReservationView,
-  },
-  {
-    path: '/ver_pedidos',
-    name: 'ver_pedidos',
-    component: UserOrdersView,
-  },
-{
-  path: '/userspanel',
-  name: 'userspanel',
-  component: UsersPanelView,
-  meta: { roles: ['encargadoSeguridad'] },
-},
-  {
-    path: '/ver_Mispedidos',
-    name: 'ver_Mispedidos',
-    component: MyOrdersView,
-  },
-  {
-    path: '/verDetalle-pedido/:id',
-    name: 'verDetalle-pedido',
-    component: OrderDetailView,
-    props: true,
-  },
-  {
-    path: '/verDetalle-reserva/:id',
-    name: 'verDetalle-reserva',
-    component: ReservationDetailsView,
-    props: true,
-  },
-  {
     path: '/verify_security_question',
     name: 'verify_security_question',
     component: VerifySecurityQuestionView,
   },
+
+  // --------- misc ----------
   {
-  path: '/logout',
-  name: 'logout',
-  beforeEnter: () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    return '/login'
-  }
-},
-{
-  path: '/panel-seguridad',
-  name: 'panel-seguridad',
-  component: SecurityPanelView,
-  meta: { roles: ['encargadoSeguridad'] },
-},
-{
-  path: '/panel-mesero',
-  name: 'panel-mesero',
-  component: WaiterPanelView,
-},
-{
-  path: '/game_panel',
-  name: 'game_panel',
-  component: GamePanelView,
-  meta: { roles: ['encargadoLocal', 'mesero'] },
-},
-{
-  path: '/reservas_panel',
-  name: 'reservas_panel',
-  component: ReservationsAdminPanelView,
-  meta: { roles: ['encargadoLocal'] },
-},
+    path: '/carrito',
+    name: 'carrito',
+    component: ShoppingCartPopup,
+  },
+  {
+    path: '/logout',
+    name: 'logout',
+    beforeEnter: () => {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      return '/login'
+    },
+  },
 ]
 
 const router = createRouter({
@@ -262,7 +298,10 @@ router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   const user = JSON.parse(localStorage.getItem('user') || 'null')
 
-  if (!to.meta?.roles) {
+  const needsRoles = to.meta?.roles || to.meta?.rolesAny
+  const needsPermissions = to.meta?.permissions || to.meta?.permissionsAny
+
+  if (!needsRoles && !needsPermissions) {
     next()
     return
   }
@@ -272,9 +311,39 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  if (!to.meta.roles.includes(user.rol_id_rol)) {
-    next('/error')
-    return
+  if (to.meta.roles) {
+    if (!to.meta.roles.includes(user.rol_id_rol)) {
+      next('/error')
+      return
+    }
+  }
+
+  if (to.meta.rolesAny) {
+    const hasRole = to.meta.rolesAny.includes(user.rol_id_rol)
+    if (!hasRole && !to.meta.permissionsAny) {
+      next('/error')
+      return
+    }
+  }
+
+  const userPermissions = user.permisos || []
+
+  if (to.meta.permissions) {
+    const hasAllPermissions = to.meta.permissions.every((p) => userPermissions.includes(p))
+    if (!hasAllPermissions) {
+      next('/error')
+      return
+    }
+  }
+
+  if (to.meta.permissionsAny) {
+    const hasAnyPermission = to.meta.permissionsAny.some((p) => userPermissions.includes(p))
+    const hasAnyRole = to.meta.rolesAny ? to.meta.rolesAny.includes(user.rol_id_rol) : false
+
+    if (!hasAnyPermission && !hasAnyRole) {
+      next('/error')
+      return
+    }
   }
 
   next()

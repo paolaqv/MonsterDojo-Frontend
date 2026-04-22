@@ -6,6 +6,7 @@ import '@/assets/css/perfil_usuario.css'
 import logo from '@/assets/images/logo.png'
 import { getCurrentUser } from '@/services/users.service'
 const menuOpen = ref(false)
+const generalError = ref('')
 const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
 const userRole = storedUser?.rol_id_rol || ''
 
@@ -45,9 +46,14 @@ onMounted(async () => {
     form.value.email = user?.correo || ''
     form.value.phone = user?.telefono != null ? String(user.telefono) : ''
   } catch (error) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    window.location.href = '/login'
+    if (error?.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+      return
+    }
+
+    console.error('Error cargando perfil:', error)
   }
 })
 

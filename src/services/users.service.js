@@ -29,3 +29,13 @@ export const deleteSecurityUser = async (userId) => {
   const { data } = await api.delete(`/security/users/${userId}`)
   return data
 }
+
+export const updateSecurityUserRole = async (userId, payload) => {
+  const { data } = await api.put(`/security/users/${userId}/role`, payload)
+  return data
+}
+
+export const updateSecurityUserStatus = async (userId, payload) => {
+  const { data } = await api.patch(`/security/users/${userId}/status`, payload)
+  return data
+}

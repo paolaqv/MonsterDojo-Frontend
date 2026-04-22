@@ -336,48 +336,46 @@ onMounted(async () => {
               <td>{{ pedidoInfo.pedido.estado }}</td>
               <td>{{ formatMonto(pedidoInfo.total) }}</td>
               <td>
-<td>
-  <div class="action-buttons">
-    <button
-      type="button"
-      class="verDetallesBtn"
-      @click="verDetalles(pedidoInfo.pedido.id_pedido)"
-    >
-      <i class="fa-solid fa-magnifying-glass-plus"></i>
-    </button>
+                <div class="action-buttons">
+                  <button
+                    type="button"
+                    class="verDetallesBtn"
+                    @click="verDetalles(pedidoInfo.pedido.id_pedido)"
+                  >
+                    <i class="fa-solid fa-magnifying-glass-plus"></i>
+                  </button>
 
-    <button
-      v-if="isEncargadoLocal && normalizeEstado(pedidoInfo.pedido.estado) === 'pendiente'"
-      type="button"
-      class="cambiarEstadoBtn"
-      @click="cambiarEstadoPedido(pedidoInfo, 'En Progreso')"
-    >
-      <i class="fa-solid fa-arrow-right"></i>
-    </button>
+                  <button
+                    v-if="isEncargadoLocal && normalizeEstado(pedidoInfo.pedido.estado) === 'pendiente'"
+                    type="button"
+                    class="cambiarEstadoBtn"
+                    @click="cambiarEstadoPedido(pedidoInfo, 'En Progreso')"
+                  >
+                    <i class="fa-solid fa-arrow-right"></i>
+                  </button>
 
-    <button
-      v-else-if="isEncargadoLocal && normalizeEstado(pedidoInfo.pedido.estado) === 'en progreso'"
-      type="button"
-      class="cambiarEstadoBtn"
-      @click="cambiarEstadoPedido(pedidoInfo, 'Finalizado')"
-    >
-      <i class="fa-solid fa-check"></i>
-    </button>
+                  <button
+                    v-else-if="isEncargadoLocal && normalizeEstado(pedidoInfo.pedido.estado) === 'en progreso'"
+                    type="button"
+                    class="cambiarEstadoBtn"
+                    @click="cambiarEstadoPedido(pedidoInfo, 'Finalizado')"
+                  >
+                    <i class="fa-solid fa-check"></i>
+                  </button>
 
-    <button
-      v-if="
-        isEncargadoLocal &&
-        normalizeEstado(pedidoInfo.pedido.estado) !== 'finalizado' &&
-        normalizeEstado(pedidoInfo.pedido.estado) !== 'cancelado'
-      "
-      type="button"
-      class="cancelarPedidoBtn"
-      @click="cancelarPedido(pedidoInfo)"
-    >
-      <i class="fa-solid fa-trash"></i>
-    </button>
-  </div>
-</td>
+                  <button
+                    v-if="
+                      isEncargadoLocal &&
+                      normalizeEstado(pedidoInfo.pedido.estado) !== 'finalizado' &&
+                      normalizeEstado(pedidoInfo.pedido.estado) !== 'cancelado'
+                    "
+                    type="button"
+                    class="cancelarPedidoBtn"
+                    @click="cancelarPedido(pedidoInfo)"
+                  >
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>

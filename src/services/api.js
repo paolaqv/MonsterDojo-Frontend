@@ -21,7 +21,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error?.response?.status === 401) {
+    const status = error?.response?.status
+    const requestUrl = error?.config?.url || ''
+
+    const isAuthRoute =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/security-question') ||
+      requestUrl.includes('/auth/verify-security-answer') ||
+      requestUrl.includes('/auth/reset-password') ||
+      requestUrl.includes('/auth/security-question')
+
+    if (status === 401 && !isAuthRoute) {
       const alreadyRedirecting = sessionStorage.getItem('session_expired_shown')
 
       localStorage.removeItem('token')
