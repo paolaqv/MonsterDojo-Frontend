@@ -3,7 +3,9 @@ body {
 }
 
 .popup {
-    display: none; /* Ocultar el pop-up inicialmente */
+    display: flex;
+    justify-content: center;
+    align-items: center;
     position: fixed;
     top: 0;
     left: 0;
@@ -15,12 +17,12 @@ body {
 
 .popup-content {
     position: relative;
-    margin: 5% auto;
     padding: 20px;
-    width: 400px; /* Aumentar el ancho del pop-up */
+    width: 100%;
+    max-width: 400px;
     background-color: #1c1c1c;
     border-radius: 10px;
-    text-align: left; /* Cambiar alineación a la izquierda */
+    text-align: left;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
@@ -37,7 +39,7 @@ body {
     width: 100px;
     height: 100px;
     display: block;
-    margin: 0 auto 20px; /* Centrar icono y añadir margen inferior */
+    margin: 0 auto 20px;
 }
 
 h2 {
@@ -45,7 +47,7 @@ h2 {
     margin-bottom: 20px;
     color: #d48600;
     font-family: 'Bangers', system-ui;
-    text-align: center; /* Centrar el título */
+    text-align: center;
 }
 
 form {
@@ -62,10 +64,14 @@ label {
     margin-bottom: 5px;
     color: #faf7e6;
     display: block;
-    font-size: 16px; /* Aumentar tamaño de fuente */
+    font-size: 16px;
 }
 
-input[type="text"], input[type="email"], input[type="number"], input[type="file"], select {
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="file"],
+select {
     padding: 10px;
     margin-bottom: 10px;
     border: 1px solid #ccc;
@@ -79,9 +85,10 @@ input[type="text"], input[type="email"], input[type="number"], input[type="file"
 .buttons {
     display: flex;
     justify-content: space-between;
+    gap: 10px;
 }
 
-button {
+.buttons button {
     padding: 10px;
     width: 48%;
     background-color: #192847;
@@ -92,16 +99,16 @@ button {
     font-size: 16px;
 }
 
-button:hover {
+.buttons button:hover {
     background-color: #d48600;
     color: black;
 }
 
-button[type="button"] {
+.buttons button[type="button"] {
     background-color: #192847;
 }
 
-button[type="button"]:hover {
+.buttons button[type="button"]:hover {
     background-color: #d48600;
     color: black;
 }

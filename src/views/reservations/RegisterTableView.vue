@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import Swal from 'sweetalert2'
-import '@/assets/css/food-panel.css'
 import '@/assets/css/popup_panel.css'
 import logo from '@/assets/images/logo.png'
 import mesaImg from '@/assets/images/mesa.png'
@@ -300,12 +299,14 @@ onMounted(async () => {
       <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
         <li><RouterLink to="/adminpanel">Inicio</RouterLink></li>
         <li><RouterLink to="/userspanel">Usuarios</RouterLink></li>
-        <li><RouterLink to="/game-menu">Juegos</RouterLink></li>
+        <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
         <li><RouterLink to="/food_panel">Comida</RouterLink></li>
         <li><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
         <li><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
         <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
-        <li><RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink></li>
+        <li>
+          <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
+        </li>
       </ul>
     </nav>
 
@@ -332,6 +333,7 @@ onMounted(async () => {
           <button id="addProductBtn" type="button" @click="openAddPopup">
             <i class="fa-solid fa-chair"></i> Registrar mesa
           </button>
+          
         </div>
       </div>
 
@@ -534,3 +536,44 @@ onMounted(async () => {
             width: 150px; /* Ajustar el tamaño del select */
         }
     </style>
+    <style scoped>
+.popup {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  position: fixed !important;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 3000 !important;
+}
+
+.popup-content {
+  position: relative;
+  width: 90%;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #1c1c1c;
+  border-radius: 10px;
+  text-align: left;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  font-size: 24px;
+  cursor: pointer;
+  color: #faf7e6;
+}
+
+.product-icon {
+  width: 100px;
+  height: 100px;
+  display: block;
+  margin: 0 auto 20px;
+}
+</style>

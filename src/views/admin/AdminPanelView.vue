@@ -35,7 +35,7 @@
         </div>
 
         <div class="option">
-          <RouterLink to="/game_panel">
+          <RouterLink to="/game-menu">
             <i class="fa-solid fa-dice"></i>
           </RouterLink>
           <span>Juegos</span>

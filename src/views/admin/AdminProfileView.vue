@@ -1,9 +1,10 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import '@/assets/css/userforms.css'
 import '@/assets/css/perfil_usuario.css'
 import logo from '@/assets/images/logo.png'
+import { getCurrentUser, updateCurrentUser } from '@/services/users.service'
 
 const menuOpen = ref(false)
 
@@ -61,6 +62,60 @@ const goToResetPassword = () => {
 const goToAdminPanel = () => {
   window.location.href = '/adminpanel'
 }
+
+onMounted(async () => {
+  try {
+    const user = await getCurrentUser()
+
+    form.value.name = user?.nombre || ''
+    form.value.email = user?.correo || ''
+    form.value.phone = user?.telefono != null ? String(user.telefono) : ''
+  } catch (error) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    window.location.href = '/login'
+  }
+})
+const handleSubmit = async () => {
+  let valid = true
+
+  errors.value.name = ''
+  errors.value.email = ''
+  errors.value.phone = ''
+
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/
+  const phoneRegex = /^\d+$/
+
+  if (!emailRegex.test(form.value.email)) {
+    errors.value.email = 'Por favor ingresa un correo electrónico válido.'
+    valid = false
+  }
+
+  if (!form.value.name.trim()) {
+    errors.value.name = 'El nombre no puede estar vacío.'
+    valid = false
+  }
+
+  if (!phoneRegex.test(form.value.phone)) {
+    errors.value.phone =
+      'Por favor ingresa un número de teléfono válido. Solo se permiten números.'
+    valid = false
+  }
+
+  if (!valid) return
+
+  try {
+    const updatedUser = await updateCurrentUser({
+      nombre: form.value.name.trim(),
+      correo: form.value.email.trim(),
+      telefono: form.value.phone ? Number(form.value.phone) : null,
+    })
+
+    localStorage.setItem('user', JSON.stringify(updatedUser))
+  } catch (error) {
+    console.error('Error actualizando perfil:', error)
+  }
+}
 </script>
 
 <template>
@@ -83,11 +138,11 @@ const goToAdminPanel = () => {
     <div class="container">
       <div class="form-container">
         <form
-          id="registration-form"
-          action="/update_profile"
-          method="POST"
-          @submit="validateForm"
-        >
+  id="registration-form"
+  action="/update_profile"
+  method="POST"
+  @submit="validateForm"
+>
           <h3>Perfil de administrador</h3>
 
           <div class="profile-photo-container">

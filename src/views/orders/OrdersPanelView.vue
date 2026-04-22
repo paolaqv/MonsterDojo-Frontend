@@ -229,14 +229,16 @@ onMounted(async () => {
       </div>
 
       <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
-        <li><RouterLink to="/adminpanel">Inicio</RouterLink></li>
+               <li><RouterLink to="/adminpanel">Inicio</RouterLink></li>
         <li><RouterLink to="/userspanel">Usuarios</RouterLink></li>
-        <li><RouterLink to="/game-menu">Juegos</RouterLink></li>
+        <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
         <li><RouterLink to="/food_panel">Comida</RouterLink></li>
         <li><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
         <li><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
         <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
-        <li><RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink></li>
+        <li>
+          <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
+        </li>
       </ul>
     </nav>
 

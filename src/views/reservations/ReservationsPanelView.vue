@@ -44,12 +44,7 @@ const loadReservas = async () => {
       ? data
       : (data?.items || data?.results || [])
   } catch (error) {
-    if (error?.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      router.push('/login')
-      return
-    }
+    
 
     errorMessage.value =
       error?.response?.data?.detail || 'No se pudieron cargar las reservas.'
@@ -145,12 +140,16 @@ onMounted(async () => {
       </button>
 
       <div class="navbar-right" :class="{ active: menuOpen }">
-        <RouterLink to="/inicio_usuario">Home</RouterLink>
-        <RouterLink to="/food-menu">Menu</RouterLink>
-        <RouterLink to="/game-menu">Productos</RouterLink>
-        <RouterLink to="/user_reservation">Reservas</RouterLink>
-        <RouterLink to="/ver_pedidos">Pedidos</RouterLink>
-        <RouterLink to="/perfil_user"><i class="fas fa-user"></i></RouterLink>
+        <li><RouterLink to="/adminpanel">Inicio</RouterLink></li>
+        <li><RouterLink to="/userspanel">Usuarios</RouterLink></li>
+        <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
+        <li><RouterLink to="/food_panel">Comida</RouterLink></li>
+        <li><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
+        <li><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
+        <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
+        <li>
+          <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
+        </li>
       </div>
     </div>
 
