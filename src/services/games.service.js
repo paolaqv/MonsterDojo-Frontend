@@ -10,8 +10,8 @@ export const createGameCategory = async (payload) => {
   return data
 }
 
-export const getGames = async (params = {}) => {
-  const { data } = await api.get('/games/', { params })
+export const getGames = async () => {
+  const { data } = await api.get('/games')
   return data
 }
 
@@ -21,7 +21,7 @@ export const getGameById = async (gameId) => {
 }
 
 export const createGame = async (payload) => {
-  const { data } = await api.post('/games/', payload)
+  const { data } = await api.post('/games', payload)
   return data
 }
 

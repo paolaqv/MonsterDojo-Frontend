@@ -8,7 +8,16 @@ import logo from '@/assets/images/logo.png'
 import { getOrders, updateOrder } from '@/services/orders.service'
 
 const router = useRouter()
+const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
+const userRole = storedUser?.rol_id_rol || ''
 
+const isMesero = computed(() => userRole === 'mesero')
+const isEncargadoLocal = computed(() => userRole === 'encargadoLocal')
+
+const homeRoute = computed(() => {
+  if (isMesero.value) return '/panel-mesero'
+  return '/adminpanel'
+})
 const menuOpen = ref(false)
 const selectedGroup = ref('todos')
 const searchQuery = ref('')
@@ -228,18 +237,20 @@ onMounted(async () => {
         <i class="fa fa-bars"></i>
       </div>
 
-      <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
-               <li><RouterLink to="/adminpanel">Inicio</RouterLink></li>
-        <li><RouterLink to="/userspanel">Usuarios</RouterLink></li>
-        <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
-        <li><RouterLink to="/food_panel">Comida</RouterLink></li>
-        <li><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
-        <li><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
-        <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
-        <li>
-          <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
-        </li>
-      </ul>
+<ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
+  <li><RouterLink :to="homeRoute">Inicio</RouterLink></li>
+  <li><RouterLink to="/game-menu">Juegos</RouterLink></li>
+  <li><RouterLink to="/food_panel">Comida</RouterLink></li>
+  <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
+
+  <li v-if="isEncargadoLocal"><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
+  <li v-if="isEncargadoLocal"><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
+  <li v-if="isEncargadoLocal">
+    <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
+  </li>
+
+  <li><RouterLink to="/logout"><i class="fa-solid fa-sign-out"></i></RouterLink></li>
+</ul>
     </nav>
 
     <div class="container">
@@ -325,42 +336,48 @@ onMounted(async () => {
               <td>{{ pedidoInfo.pedido.estado }}</td>
               <td>{{ formatMonto(pedidoInfo.total) }}</td>
               <td>
-                <div class="action-buttons">
-                  <button
-                    type="button"
-                    class="verDetallesBtn"
-                    @click="verDetalles(pedidoInfo.pedido.id_pedido)"
-                  >
-                    <i class="fa-solid fa-magnifying-glass-plus"></i>
-                  </button>
+<td>
+  <div class="action-buttons">
+    <button
+      type="button"
+      class="verDetallesBtn"
+      @click="verDetalles(pedidoInfo.pedido.id_pedido)"
+    >
+      <i class="fa-solid fa-magnifying-glass-plus"></i>
+    </button>
 
-                  <button
-                    v-if="normalizeEstado(pedidoInfo.pedido.estado) === 'pendiente'"
-                    type="button"
-                    class="cambiarEstadoBtn"
-                    @click="cambiarEstadoPedido(pedidoInfo, 'En Progreso')"
-                  >
-                    <i class="fa-solid fa-arrow-right"></i>
-                  </button>
+    <button
+      v-if="isEncargadoLocal && normalizeEstado(pedidoInfo.pedido.estado) === 'pendiente'"
+      type="button"
+      class="cambiarEstadoBtn"
+      @click="cambiarEstadoPedido(pedidoInfo, 'En Progreso')"
+    >
+      <i class="fa-solid fa-arrow-right"></i>
+    </button>
 
-                  <button
-                    v-else-if="normalizeEstado(pedidoInfo.pedido.estado) === 'en progreso'"
-                    type="button"
-                    class="cambiarEstadoBtn"
-                    @click="cambiarEstadoPedido(pedidoInfo, 'Finalizado')"
-                  >
-                    <i class="fa-solid fa-check"></i>
-                  </button>
+    <button
+      v-else-if="isEncargadoLocal && normalizeEstado(pedidoInfo.pedido.estado) === 'en progreso'"
+      type="button"
+      class="cambiarEstadoBtn"
+      @click="cambiarEstadoPedido(pedidoInfo, 'Finalizado')"
+    >
+      <i class="fa-solid fa-check"></i>
+    </button>
 
-                  <button
-                    v-if="normalizeEstado(pedidoInfo.pedido.estado) !== 'finalizado' && normalizeEstado(pedidoInfo.pedido.estado) !== 'cancelado'"
-                    type="button"
-                    class="cancelarPedidoBtn"
-                    @click="cancelarPedido(pedidoInfo)"
-                  >
-                    <i class="fa-solid fa-trash"></i>
-                  </button>
-                </div>
+    <button
+      v-if="
+        isEncargadoLocal &&
+        normalizeEstado(pedidoInfo.pedido.estado) !== 'finalizado' &&
+        normalizeEstado(pedidoInfo.pedido.estado) !== 'cancelado'
+      "
+      type="button"
+      class="cancelarPedidoBtn"
+      @click="cancelarPedido(pedidoInfo)"
+    >
+      <i class="fa-solid fa-trash"></i>
+    </button>
+  </div>
+</td>
               </td>
             </tr>
           </tbody>

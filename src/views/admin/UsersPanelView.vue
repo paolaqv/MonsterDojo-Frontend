@@ -1,11 +1,17 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import Swal from 'sweetalert2'
 import '@/assets/css/userspanel.css'
 import '@/assets/css/popup.css'
 import logo from '@/assets/images/logo.png'
 import editUserImg from '@/assets/images/editar_usuario.png'
+import {
+  deleteSecurityUser,
+  getSecurityUserById,
+  getSecurityUsers,
+  updateSecurityUser,
+} from '@/services/users.service'
 
 const menuOpen = ref(false)
 const search = ref('')
@@ -31,7 +37,7 @@ const filteredUsers = computed(() => {
     return (
       String(user.nombre).toLowerCase().includes(query) ||
       String(user.correo).toLowerCase().includes(query) ||
-      String(user.telefono).toLowerCase().includes(query)
+      String(user.telefono ?? '').toLowerCase().includes(query)
     )
   })
 })
@@ -40,26 +46,55 @@ const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
 }
 
+const loadUsers = async () => {
+  try {
+    users.value = await getSecurityUsers()
+  } catch (error) {
+    console.error('Error loading users:', error)
+    Swal.fire({
+      title: 'Error',
+      text: 'No se pudieron cargar los usuarios.',
+      icon: 'error',
+      confirmButtonText: 'OK',
+      customClass: {
+        confirmButton: 'swal2-confirm',
+      },
+    })
+  }
+}
+
+onMounted(() => {
+  loadUsers()
+})
+
 const showEditTab = (n) => {
   currentEditTab.value = n
 }
 
 const openEditPopup = async (userId) => {
   try {
-    const response = await fetch(`/get_user/${userId}`)
-    const data = await response.json()
+    const data = await getSecurityUserById(userId)
 
     editForm.value = {
       id: userId,
       name: data.nombre,
       email: data.correo,
-      phone: data.telefono,
+      phone: data.telefono ?? '',
     }
 
     showEditPopup.value = true
     showEditTab(0)
   } catch (error) {
     console.error('Error loading the user data:', error)
+    Swal.fire({
+      title: 'Error',
+      text: 'No se pudo cargar el usuario.',
+      icon: 'error',
+      confirmButtonText: 'OK',
+      customClass: {
+        confirmButton: 'swal2-confirm',
+      },
+    })
   }
 }
 
@@ -108,34 +143,25 @@ const showSuccessMessage = (message) => {
   }).then(() => {
     closeEditPopup()
     clearEditForm()
-    window.location.href = '/userspanel'
+    loadUsers()
   })
 }
 
 const handleSubmit = async (event) => {
   event.preventDefault()
 
-  const formData = new FormData()
-  formData.append('name', editForm.value.name)
-  formData.append('email', editForm.value.email)
-  formData.append('phone', editForm.value.phone)
-
   try {
-    const response = await fetch(`/update_user/${editForm.value.id}`, {
-      method: 'POST',
-      body: formData,
+    await updateSecurityUser(editForm.value.id, {
+      nombre: editForm.value.name,
+      correo: editForm.value.email,
+      telefono: editForm.value.phone ? Number(editForm.value.phone) : null,
     })
 
-    if (response.ok) {
-      showSuccessMessage('Cambios guardados con éxito')
-    } else {
-      const text = await response.text()
-      throw new Error(text)
-    }
+    showSuccessMessage('Cambios guardados con éxito')
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: 'Hubo un problema al guardar los cambios.',
+      text: error?.response?.data?.detail || 'Hubo un problema al guardar los cambios.',
       icon: 'error',
       confirmButtonText: 'OK',
       customClass: {
@@ -145,9 +171,7 @@ const handleSubmit = async (event) => {
   }
 }
 
-const confirmDelete = (event) => {
-  event.preventDefault()
-
+const confirmDelete = (userId) => {
   Swal.fire({
     title: '¿Está seguro?',
     text: '¿Está seguro de eliminar el registro?',
@@ -159,9 +183,33 @@ const confirmDelete = (event) => {
       confirmButton: 'swal2-confirm',
       cancelButton: 'swal2-cancel',
     },
-  }).then((result) => {
+  }).then(async (result) => {
     if (result.isConfirmed) {
-      Swal.fire('¡Eliminado!', 'El registro ha sido eliminado.', 'success')
+      try {
+        await deleteSecurityUser(userId)
+
+        Swal.fire({
+          title: '¡Eliminado!',
+          text: 'El usuario ha sido eliminado.',
+          icon: 'success',
+          confirmButtonText: 'OK',
+          customClass: {
+            confirmButton: 'swal2-confirm',
+          },
+        }).then(() => {
+          loadUsers()
+        })
+      } catch (error) {
+        Swal.fire({
+          title: 'Error',
+          text: error?.response?.data?.detail || 'No se pudo eliminar el usuario.',
+          icon: 'error',
+          confirmButtonText: 'OK',
+          customClass: {
+            confirmButton: 'swal2-confirm',
+          },
+        })
+      }
     }
   })
 }
@@ -222,9 +270,9 @@ const confirmDelete = (event) => {
                 <button class="editUserBtn" @click="openEditPopup(user.id_usuario)">
                   <i class="fa-solid fa-edit"></i>
                 </button>
-                <button class="deleteUserBtn" @click="confirmDelete($event)">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
+<button class="deleteUserBtn" @click="confirmDelete(user.id_usuario)">
+  <i class="fa-solid fa-trash"></i>
+</button>
               </td>
             </tr>
           </tbody>

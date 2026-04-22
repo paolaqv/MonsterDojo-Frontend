@@ -5,19 +5,20 @@ import Swal from 'sweetalert2'
 import '@/assets/css/food-panel.css'
 import '@/assets/css/popup_panel.css'
 import logo from '@/assets/images/logo.png'
-import menuImg from '@/assets/images/menu.png'
-import hamburguerImg from '@/assets/images/hamburguer.png'
+import menuImg from '@/assets/images/espadas.png'
+import editImg from '@/assets/images/dados.png'
 import categoryImg from '@/assets/images/category.png'
 import {
-  createProduct,
-  createProductCategory,
-  getProductById,
-  getProductCategories,
-  getProducts,
-  updateProduct,
-} from '@/services/products.service'
+  createGame,
+  createGameCategory,
+  getGameById,
+  getGameCategories,
+  getGames,
+  updateGame,
+} from '@/services/games.service'
 
 const router = useRouter()
+
 const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
 const userRole = storedUser?.rol_id_rol || ''
 
@@ -33,11 +34,10 @@ const menuOpen = ref(false)
 const search = ref('')
 const groupBy = ref('')
 const categorias = ref([])
-const productos = ref([])
-const selectedCategory = ref('')
+const juegos = ref([])
 
-const showAddProductPopup = ref(false)
-const showEditProductPopup = ref(false)
+const showAddGamePopup = ref(false)
+const showEditGamePopup = ref(false)
 const showCategoryPopup = ref(false)
 
 const currentTab = ref(0)
@@ -46,8 +46,7 @@ const currentEditTab = ref(0)
 const regForm = ref({
   nombre: '',
   descripcion: '',
-  precio: '',
-  max_personas: '',
+  precio_alquiler: '',
   imagen: null,
   categoria: '',
 })
@@ -56,8 +55,7 @@ const editForm = ref({
   id: '',
   nombre: '',
   descripcion: '',
-  precio: '',
-  max_personas: '',
+  precio_alquiler: '',
   imagen: null,
   categoria: '',
   imagenActual: '',
@@ -67,6 +65,10 @@ const editForm = ref({
 const categoryForm = ref({
   nombre: '',
 })
+
+const toggleMenu = () => {
+  menuOpen.value = !menuOpen.value
+}
 
 const normalizeImage = (imagen) => {
   if (!imagen) return ''
@@ -104,22 +106,22 @@ const fileToBase64 = (file) =>
 
 const loadData = async () => {
   try {
-    const [categoriasData, productosData] = await Promise.all([
-      getProductCategories(),
-      getProducts(),
+    const [categoriasData, juegosData] = await Promise.all([
+      getGameCategories(),
+      getGames(),
     ])
 
     categorias.value = Array.isArray(categoriasData)
       ? categoriasData
       : (categoriasData?.items || categoriasData?.results || [])
 
-    const productosArray = Array.isArray(productosData)
-      ? productosData
-      : (productosData?.items || productosData?.results || [])
+    const juegosArray = Array.isArray(juegosData)
+      ? juegosData
+      : (juegosData?.items || juegosData?.results || [])
 
-    productos.value = productosArray.map((producto) => ({
-      ...producto,
-      imagen: normalizeImage(producto.imagen),
+    juegos.value = juegosArray.map((juego) => ({
+      ...juego,
+      imagen: normalizeImage(juego.imagen),
     }))
   } catch (error) {
     if (error?.response?.status === 401) {
@@ -131,7 +133,7 @@ const loadData = async () => {
 
     Swal.fire({
       title: 'Error',
-      text: 'No se pudieron cargar los productos.',
+      text: error?.response?.data?.detail || 'No se pudieron cargar los juegos.',
       icon: 'error',
       confirmButtonText: 'OK',
       customClass: {
@@ -141,25 +143,25 @@ const loadData = async () => {
   }
 }
 
-const filteredProductos = computed(() => {
-  let data = [...productos.value]
+const filteredJuegos = computed(() => {
+  let data = [...juegos.value]
 
   if (search.value.trim()) {
     const query = search.value.toLowerCase()
-    data = data.filter((producto) =>
-      `${producto.nombre} ${producto.descripcion}`.toLowerCase().includes(query)
+    data = data.filter((juego) =>
+      `${juego.nombre} ${juego.descripcion}`.toLowerCase().includes(query)
     )
   }
 
   if (groupBy.value === 'archivados') {
-    data = data.filter((producto) => !producto.activo)
+    data = data.filter((juego) => !juego.activo)
   } else if (groupBy.value) {
     data = data.filter(
-      (producto) =>
+      (juego) =>
         String(
-          producto.categoria_producto_id_catProducto ??
-            producto.categoria_producto?.id_catProducto ??
-            producto.categoria_producto?.id_categoria
+          juego.categoria_juego_id_catJuego ??
+            juego.categoria_juego?.id_catJuego ??
+            juego.categoria_juego?.id_categoria
         ) === String(groupBy.value)
     )
   }
@@ -167,12 +169,8 @@ const filteredProductos = computed(() => {
   return data
 })
 
-const toggleMenu = () => {
-  menuOpen.value = !menuOpen.value
-}
-
-const openAddProductPopup = () => {
-  showAddProductPopup.value = true
+const openAddGamePopup = () => {
+  showAddGamePopup.value = true
   currentTab.value = 0
 }
 
@@ -181,11 +179,11 @@ const openCategoryPopup = () => {
 }
 
 const closePopup = () => {
-  showAddProductPopup.value = false
+  showAddGamePopup.value = false
 }
 
 const closeEditPopup = () => {
-  showEditProductPopup.value = false
+  showEditGamePopup.value = false
 }
 
 const closeCategoryPopup = () => {
@@ -196,8 +194,7 @@ const clearForm = () => {
   regForm.value = {
     nombre: '',
     descripcion: '',
-    precio: '',
-    max_personas: '',
+    precio_alquiler: '',
     imagen: null,
     categoria: '',
   }
@@ -208,8 +205,7 @@ const clearEditForm = () => {
     id: '',
     nombre: '',
     descripcion: '',
-    precio: '',
-    max_personas: '',
+    precio_alquiler: '',
     imagen: null,
     categoria: '',
     imagenActual: '',
@@ -298,27 +294,26 @@ const showSuccessMessage = (popupType, message) => {
   })
 }
 
-const handleProductoSubmit = async (event) => {
+const handleGameSubmit = async (event) => {
   event.preventDefault()
 
   try {
     const imagenBase64 = await fileToBase64(regForm.value.imagen)
 
-    await createProduct({
+    await createGame({
       nombre: regForm.value.nombre,
       descripcion: regForm.value.descripcion,
-      precio: Number(regForm.value.precio),
-      max_personas: Number(regForm.value.max_personas),
+      precio_alquiler: Number(regForm.value.precio_alquiler),
       imagen: imagenBase64,
-      categoria_producto_id_catProducto: Number(regForm.value.categoria),
+      categoria_juego_id_catJuego: Number(regForm.value.categoria),
       activo: true,
     })
 
-    showSuccessMessage('contactPopup', 'Producto registrado con éxito')
+    showSuccessMessage('contactPopup', 'Juego registrado con éxito')
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: error?.response?.data?.detail || 'Hubo un problema al registrar el producto.',
+      text: error?.response?.data?.detail || 'Hubo un problema al registrar el juego.',
       icon: 'error',
       confirmButtonText: 'OK',
       customClass: {
@@ -332,7 +327,7 @@ const handleCategorySubmit = async (event) => {
   event.preventDefault()
 
   try {
-    await createProductCategory({
+    await createGameCategory({
       nombre: categoryForm.value.nombre,
     })
 
@@ -350,37 +345,36 @@ const handleCategorySubmit = async (event) => {
   }
 }
 
-const openEditPopup = async (productId) => {
+const openEditPopup = async (gameId) => {
   try {
-    const data = await getProductById(productId)
+    const data = await getGameById(gameId)
 
-    editForm.value.id = productId
+    editForm.value.id = gameId
     editForm.value.nombre = data.nombre
     editForm.value.descripcion = data.descripcion
-    editForm.value.precio = data.precio
-    editForm.value.max_personas = data.max_personas
+    editForm.value.precio_alquiler = data.precio_alquiler
     editForm.value.categoria =
-      data.categoria_producto_id_catProducto ??
-      data.categoria_producto?.id_catProducto ??
-      data.categoria_producto?.id_categoria ??
+      data.categoria_juego_id_catJuego ??
+      data.categoria_juego?.id_catJuego ??
+      data.categoria_juego?.id_categoria ??
       ''
     editForm.value.imagen = null
     editForm.value.imagenActual = data.imagen || ''
     editForm.value.activo = data.activo ?? true
 
-    showEditProductPopup.value = true
+    showEditGamePopup.value = true
     currentEditTab.value = 0
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: 'Error al cargar los datos del producto.',
+      text: 'Error al cargar los datos del juego.',
       icon: 'error',
       confirmButtonText: 'OK',
     })
   }
 }
 
-const handleEditProductoSubmit = async (event) => {
+const handleEditGameSubmit = async (event) => {
   event.preventDefault()
 
   try {
@@ -388,21 +382,20 @@ const handleEditProductoSubmit = async (event) => {
       ? await fileToBase64(editForm.value.imagen)
       : editForm.value.imagenActual
 
-    await updateProduct(editForm.value.id, {
+    await updateGame(editForm.value.id, {
       nombre: editForm.value.nombre,
       descripcion: editForm.value.descripcion,
-      precio: Number(editForm.value.precio),
-      max_personas: Number(editForm.value.max_personas),
+      precio_alquiler: Number(editForm.value.precio_alquiler),
       imagen: nuevaImagen,
-      categoria_producto_id_catProducto: Number(editForm.value.categoria),
+      categoria_juego_id_catJuego: Number(editForm.value.categoria),
       activo: editForm.value.activo,
     })
 
-    showSuccessMessage('editPopup', 'Producto actualizado con éxito')
+    showSuccessMessage('editPopup', 'Juego actualizado con éxito')
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: error?.response?.data?.detail || 'Hubo un problema al actualizar el producto.',
+      text: error?.response?.data?.detail || 'Hubo un problema al actualizar el juego.',
       icon: 'error',
       confirmButtonText: 'OK',
       customClass: {
@@ -412,12 +405,12 @@ const handleEditProductoSubmit = async (event) => {
   }
 }
 
-const confirmDelete = (event, producto) => {
+const confirmDelete = (event, juego) => {
   event.preventDefault()
 
   Swal.fire({
     title: '¿Está seguro?',
-    text: '¿Está seguro de archivar el producto?',
+    text: '¿Está seguro de archivar el juego?',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Sí, archivar',
@@ -429,25 +422,24 @@ const confirmDelete = (event, producto) => {
   }).then(async (result) => {
     if (result.isConfirmed) {
       try {
-        await updateProduct(producto.id_producto, {
-          nombre: producto.nombre,
-          descripcion: producto.descripcion,
-          precio: Number(producto.precio),
-          max_personas: Number(producto.max_personas),
-          imagen: producto.imagen,
-          categoria_producto_id_catProducto:
-            producto.categoria_producto_id_catProducto ??
-            producto.categoria_producto?.id_catProducto ??
-            producto.categoria_producto?.id_categoria,
+        await updateGame(juego.id_juego, {
+          nombre: juego.nombre,
+          descripcion: juego.descripcion,
+          precio_alquiler: Number(juego.precio_alquiler),
+          imagen: juego.imagen,
+          categoria_juego_id_catJuego:
+            juego.categoria_juego_id_catJuego ??
+            juego.categoria_juego?.id_catJuego ??
+            juego.categoria_juego?.id_categoria,
           activo: false,
         })
 
-        Swal.fire('¡Archivado!', 'El producto ha sido archivado.', 'success')
+        Swal.fire('¡Archivado!', 'El juego ha sido archivado.', 'success')
         await loadData()
       } catch (error) {
         Swal.fire({
           title: 'Error',
-          text: 'Hubo un problema al archivar el producto.',
+          text: 'Hubo un problema al archivar el juego.',
           icon: 'error',
           confirmButtonText: 'OK',
           customClass: {
@@ -459,12 +451,12 @@ const confirmDelete = (event, producto) => {
   })
 }
 
-const confirmUnarchive = (event, producto) => {
+const confirmUnarchive = (event, juego) => {
   event.preventDefault()
 
   Swal.fire({
     title: '¿Está seguro?',
-    text: '¿Está seguro de desarchivar el producto?',
+    text: '¿Está seguro de desarchivar el juego?',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Sí, desarchivar',
@@ -476,23 +468,22 @@ const confirmUnarchive = (event, producto) => {
   }).then(async (result) => {
     if (result.isConfirmed) {
       try {
-        await updateProduct(producto.id_producto, {
-          nombre: producto.nombre,
-          descripcion: producto.descripcion,
-          precio: Number(producto.precio),
-          max_personas: Number(producto.max_personas),
-          imagen: producto.imagen,
-          categoria_producto_id_catProducto:
-            producto.categoria_producto_id_catProducto ??
-            producto.categoria_producto?.id_catProducto ??
-            producto.categoria_producto?.id_categoria,
+        await updateGame(juego.id_juego, {
+          nombre: juego.nombre,
+          descripcion: juego.descripcion,
+          precio_alquiler: Number(juego.precio_alquiler),
+          imagen: juego.imagen,
+          categoria_juego_id_catJuego:
+            juego.categoria_juego_id_catJuego ??
+            juego.categoria_juego?.id_catJuego ??
+            juego.categoria_juego?.id_categoria,
           activo: true,
         })
 
-        Swal.fire('¡Desarchivado!', 'El producto ha sido desarchivado.', 'success')
+        Swal.fire('¡Desarchivado!', 'El juego ha sido desarchivado.', 'success')
         await loadData()
       } catch (error) {
-        Swal.fire('Error', 'No se pudo desarchivar el producto.', 'error')
+        Swal.fire('Error', 'No se pudo desarchivar el juego.', 'error')
       }
     }
   })
@@ -514,27 +505,29 @@ onMounted(async () => {
         <i class="fa fa-bars"></i>
       </div>
 
-<ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
-  <li><RouterLink :to="homeRoute">Inicio</RouterLink></li>
-  <li><RouterLink to="/game-menu">Juegos</RouterLink></li>
-  <li><RouterLink to="/food_panel">Comida</RouterLink></li>
-  <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
+      <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
+        <li><RouterLink :to="homeRoute">Inicio</RouterLink></li>
+        <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
+        <li><RouterLink to="/food_panel">Comida</RouterLink></li>
+        <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
 
-  <li v-if="isEncargadoLocal"><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
-  <li v-if="isEncargadoLocal"><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
-  <li v-if="isEncargadoLocal">
-    <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
-  </li>
+        <li v-if="isEncargadoLocal"><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
+        <li v-if="isEncargadoLocal"><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
+        <li v-if="isEncargadoLocal">
+          <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
+        </li>
 
-  <li><RouterLink to="/logout"><i class="fa-solid fa-sign-out"></i></RouterLink></li>
-</ul>
+        <li><RouterLink to="/logout"><i class="fa-solid fa-sign-out"></i></RouterLink></li>
+      </ul>
     </nav>
 
     <div class="container">
+      <div class="title">Panel de Juegos</div>
+
       <div class="actions-container">
-        <form method="GET" action="/food_panel">
+        <form method="GET" action="/game_panel">
           <div class="search-container">
-            <input v-model="search" type="text" name="search" placeholder="Buscar producto" />
+            <input v-model="search" type="text" name="search" placeholder="Buscar juego" />
             <button type="submit">Buscar <i class="fa-solid fa-search"></i></button>
           </div>
 
@@ -545,8 +538,8 @@ onMounted(async () => {
               <option value="archivados">Productos Archivados</option>
               <option
                 v-for="categoria in categorias"
-                :key="categoria.id_catProducto"
-                :value="categoria.id_catProducto"
+                :key="categoria.id_catJuego"
+                :value="categoria.id_catJuego"
               >
                 {{ categoria.nombre }}
               </option>
@@ -554,14 +547,14 @@ onMounted(async () => {
           </div>
         </form>
 
-<div v-if="isEncargadoLocal" class="add-buttons">
-  <button id="addProductBtn" @click="openAddProductPopup">
-    <i class="fa-solid fa-burger"></i> Agregar Producto
-  </button>
-  <button id="addCategoryBtn" @click="openCategoryPopup">
-    <i class="fa-solid fa-list"></i> Agregar Categoría
-  </button>
-</div>
+        <div v-if="isEncargadoLocal" class="add-buttons">
+          <button id="addGameBtn" @click="openAddGamePopup">
+            <i class="fa-solid fa-dice"></i> Agregar Juego
+          </button>
+          <button id="addCategoryBtn" @click="openCategoryPopup">
+            <i class="fa-solid fa-list"></i> Agregar Categoría
+          </button>
+        </div>
       </div>
 
       <div class="table-responsive">
@@ -571,8 +564,7 @@ onMounted(async () => {
               <th>ID</th>
               <th>Nombre</th>
               <th>Descripción</th>
-              <th>Precio</th>
-              <th>Máx. Personas</th>
+              <th>Precio Alquiler</th>
               <th>Imagen</th>
               <th>Categoría</th>
               <th v-if="isEncargadoLocal">Acciones</th>
@@ -580,40 +572,37 @@ onMounted(async () => {
           </thead>
 
           <tbody>
-            <tr v-for="producto in filteredProductos" :key="producto.id_producto">
-              <td>{{ producto.id_producto }}</td>
-              <td>{{ producto.nombre }}</td>
-              <td>{{ producto.descripcion }}</td>
-              <td>{{ producto.precio }}</td>
-              <td>{{ producto.max_personas }}</td>
+            <tr v-for="juego in filteredJuegos" :key="juego.id_juego">
+              <td>{{ juego.id_juego }}</td>
+              <td>{{ juego.nombre }}</td>
+              <td>{{ juego.descripcion }}</td>
+              <td>{{ juego.precio_alquiler }}</td>
               <td>
-                <img :src="producto.imagen" :alt="`Imagen de ${producto.nombre}`" width="100" />
+                <img :src="juego.imagen" :alt="`Imagen de ${juego.nombre}`" width="100" />
               </td>
-              <td>{{ producto.categoria_producto?.nombre }}</td>
-              <td>
-                <td v-if="isEncargadoLocal">
-  <div class="action-buttons">
-    <button class="editProductBtn" @click="openEditPopup(producto.id_producto)">
-      <i class="fa-solid fa-edit"></i>
-    </button>
+              <td>{{ juego.categoria_juego?.nombre }}</td>
+              <td v-if="isEncargadoLocal">
+                <div class="action-buttons">
+                  <button class="editGameBtn" @click="openEditPopup(juego.id_juego)">
+                    <i class="fa-solid fa-edit"></i>
+                  </button>
 
-    <button
-      v-if="producto.activo"
-      class="deleteProductBtn"
-      @click="confirmDelete($event, producto)"
-    >
-      <i class="fa-solid fa-trash"></i>
-    </button>
+                  <button
+                    v-if="juego.activo"
+                    class="deleteGameBtn"
+                    @click="confirmDelete($event, juego)"
+                  >
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
 
-    <button
-      v-else
-      class="unarchiveProductBtn"
-      @click="confirmUnarchive($event, producto)"
-    >
-      <i class="fa-solid fa-box-open"></i>
-    </button>
-  </div>
-</td>
+                  <button
+                    v-else
+                    class="unarchiveProductBtn"
+                    @click="confirmUnarchive($event, juego)"
+                  >
+                    <i class="fa-solid fa-box-open"></i>
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -621,10 +610,11 @@ onMounted(async () => {
       </div>
     </div>
 
-<div v-if="showAddProductPopup && isEncargadoLocal" id="contactPopup" class="popup">      <div class="popup-content">
+    <div v-if="showAddGamePopup && isEncargadoLocal" class="popup" id="contactPopup">
+      <div class="popup-content">
         <span class="close-btn" @click="closePopup">&times;</span>
-        <img :src="menuImg" alt="Product Icon" class="product-icon" />
-        <h2>REGISTRO NUEVO PRODUCTO</h2>
+        <img :src="menuImg" alt="Game Icon" class="product-icon" />
+        <h2>REGISTRO NUEVO JUEGO</h2>
 
         <div class="step-indicator">
           <div class="step-container">
@@ -636,32 +626,23 @@ onMounted(async () => {
           </div>
         </div>
 
-        <form id="regForm" @submit.prevent="handleProductoSubmit">
+        <form id="regForm" @submit.prevent="handleGameSubmit">
           <div v-show="currentTab === 0" class="tab">
             <div class="form-group">
               <label for="nombre">Nombre</label>
               <input id="nombre" v-model="regForm.nombre" type="text" name="nombre" required />
-              <span id="error-nombre" class="error-message"></span>
             </div>
 
             <div class="form-group">
               <label for="descripcion">Descripción</label>
               <input id="descripcion" v-model="regForm.descripcion" type="text" name="descripcion" required />
-              <span id="error-descripcion" class="error-message"></span>
             </div>
           </div>
 
           <div v-show="currentTab === 1" class="tab">
             <div class="form-group">
-              <label for="precio">Precio</label>
-              <input id="precio" v-model="regForm.precio" type="number" name="precio" step="0.01" required />
-              <span id="error-precio" class="error-message"></span>
-            </div>
-
-            <div class="form-group">
-              <label for="max_personas">Máx. Personas</label>
-              <input id="max_personas" v-model="regForm.max_personas" type="number" name="max_personas" required />
-              <span id="error-max_personas" class="error-message"></span>
+              <label for="precio_alquiler">Precio Alquiler</label>
+              <input id="precio_alquiler" v-model="regForm.precio_alquiler" type="number" step="0.01" required />
             </div>
           </div>
 
@@ -671,21 +652,19 @@ onMounted(async () => {
               <input
                 id="imagen"
                 type="file"
-                name="imagen"
                 accept="image/png, image/jpeg, image/jpg"
                 required
                 @change="handleRegImageChange"
               />
-              <span id="error-imagen" class="error-message"></span>
             </div>
 
             <div class="form-group">
               <label for="categoria">Categoría</label>
-              <select id="categoria" v-model="regForm.categoria" name="categoria" required>
+              <select id="categoria" v-model="regForm.categoria" required>
                 <option
                   v-for="categoria in categorias"
-                  :key="categoria.id_catProducto"
-                  :value="categoria.id_catProducto"
+                  :key="categoria.id_catJuego"
+                  :value="categoria.id_catJuego"
                 >
                   {{ categoria.nombre }}
                 </option>
@@ -701,10 +680,11 @@ onMounted(async () => {
       </div>
     </div>
 
-<div v-if="showEditProductPopup && isEncargadoLocal" id="editPopup" class="popup">      <div class="popup-content">
+    <div v-if="showEditGamePopup && isEncargadoLocal" class="popup" id="editPopup">
+      <div class="popup-content">
         <span class="close-btn" @click="closeEditPopup">&times;</span>
-        <img :src="hamburguerImg" alt="Product Icon" class="product-icon" />
-        <h2>EDITAR PRODUCTO</h2>
+        <img :src="editImg" alt="Game Icon" class="product-icon" />
+        <h2>EDITAR JUEGO</h2>
 
         <div class="step-indicator">
           <div class="step-container">
@@ -716,32 +696,23 @@ onMounted(async () => {
           </div>
         </div>
 
-   <form id="editForm" @submit.prevent="handleEditProductoSubmit">
+        <form id="editForm" @submit.prevent="handleEditGameSubmit">
           <div v-show="currentEditTab === 0" class="tab">
             <div class="form-group">
               <label for="edit_nombre">Nombre</label>
-              <input id="edit_nombre" v-model="editForm.nombre" type="text" name="nombre" required />
-              <span id="edit-error-nombre" class="error-message"></span>
+              <input id="edit_nombre" v-model="editForm.nombre" type="text" required />
             </div>
 
             <div class="form-group">
               <label for="edit_descripcion">Descripción</label>
-              <input id="edit_descripcion" v-model="editForm.descripcion" type="text" name="descripcion" required />
-              <span id="edit-error-descripcion" class="error-message"></span>
+              <input id="edit_descripcion" v-model="editForm.descripcion" type="text" required />
             </div>
           </div>
 
           <div v-show="currentEditTab === 1" class="tab">
             <div class="form-group">
-              <label for="edit_precio">Precio</label>
-              <input id="edit_precio" v-model="editForm.precio" type="number" name="precio" step="0.01" required />
-              <span id="edit-error-precio" class="error-message"></span>
-            </div>
-
-            <div class="form-group">
-              <label for="edit_max_personas">Máx. Personas</label>
-              <input id="edit_max_personas" v-model="editForm.max_personas" type="number" name="max_personas" required />
-              <span id="edit-error-max_personas" class="error-message"></span>
+              <label for="edit_precio_alquiler">Precio Alquiler</label>
+              <input id="edit_precio_alquiler" v-model="editForm.precio_alquiler" type="number" step="0.01" required />
             </div>
           </div>
 
@@ -751,20 +722,18 @@ onMounted(async () => {
               <input
                 id="edit_imagen"
                 type="file"
-                name="imagen"
                 accept="image/png, image/jpeg, image/jpg"
                 @change="handleEditImageChange"
               />
-              <span id="edit-error-imagen" class="error-message"></span>
             </div>
 
             <div class="form-group">
               <label for="edit_categoria">Categoría</label>
-              <select id="edit_categoria" v-model="editForm.categoria" name="categoria" required>
+              <select id="edit_categoria" v-model="editForm.categoria" required>
                 <option
                   v-for="categoria in categorias"
-                  :key="categoria.id_catProducto"
-                  :value="categoria.id_catProducto"
+                  :key="categoria.id_catJuego"
+                  :value="categoria.id_catJuego"
                 >
                   {{ categoria.nombre }}
                 </option>
@@ -780,7 +749,8 @@ onMounted(async () => {
       </div>
     </div>
 
-<div v-if="showCategoryPopup && isEncargadoLocal" id="categoryPopup" class="popup">      <div class="popup-content">
+    <div v-if="showCategoryPopup && isEncargadoLocal" class="popup" id="categoryPopup">
+      <div class="popup-content">
         <span class="close-btn" @click="closeCategoryPopup">&times;</span>
         <img :src="categoryImg" alt="Category Icon" class="product-icon" />
         <h2>REGISTRO NUEVA CATEGORÍA</h2>
@@ -792,10 +762,8 @@ onMounted(async () => {
               id="categoria_nombre"
               v-model="categoryForm.nombre"
               type="text"
-              name="nombre"
               required
             />
-            <span id="error-categoria_nombre" class="error-message"></span>
           </div>
 
           <div class="buttons">
@@ -807,86 +775,77 @@ onMounted(async () => {
     </div>
   </div>
 </template>
-    <!-- Estilos para las alertas -->
-    <style>
-        .swal2-cancel {
-            background-color: #192847 !important;
-            color: #fff !important;
-        }
-        .swal2-confirm {
-            background-color: #d48600 !important;
-            color: #fff !important;
-            width: 120px !important; 
-        }
 
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-
-        .action-buttons button {
-            background-color: var(--alt-primary-color);
-            color: var(--light-color);
-            border: none;
-            padding: 10px;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-
-        .action-buttons button i {
-            pointer-events: none;
-        }
-
-        .search-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 10px;
-            gap: 20px; 
-        }
-
-        .search-container button,
-        .group-by-container button,
-        .add-buttons button {
-            margin-left: 10px;
-            margin-right: 10px;
-        }
-
-        .add-buttons {
-            display: flex;
-            gap: 20px; /* Espacio entre los botones de agregar producto y categoría */
-        }
-
-        .add-product button,
-        .add-category button {
-            width: auto;
-            background-color: var(--alt-primary-color);
-            color: var(--light-color);
-            font-size: 15px;
-            border: none;
-            padding: 10px;
-            border-radius: 20px;
-            cursor: pointer;
-            margin-left: 10px;
-            margin-right: 10px;
-        }
-        
-        .group-by-container {
-            display: flex;
-            justify-content: flex-start;            
-            align-items: center;
-            margin-top: 10px;
-            gap: 5px; 
-        }
-
-        .group-by-container label {
-            font-size: 14px;
-        }
-
-        .group-by-container select {
-            font-size: 14px;
-            padding: 5px;
-            width: 150px; /* Ajustar el tamaño del select */
-        }
-    </style>
+<style>
+.swal2-cancel {
+  background-color: #192847 !important;
+  color: #fff !important;
+}
+.swal2-confirm {
+  background-color: #d48600 !important;
+  color: #fff !important;
+  width: 120px !important;
+}
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.action-buttons button {
+  background-color: var(--alt-primary-color);
+  color: var(--light-color);
+  border: none;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.action-buttons button i {
+  pointer-events: none;
+}
+.search-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  gap: 20px;
+}
+.search-container button,
+.add-buttons button {
+  margin-left: 10px;
+  margin-right: 10px;
+}
+.add-buttons {
+  display: flex;
+  gap: 20px;
+}
+.form-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 15px;
+}
+.form-group label {
+  margin-right: 10px;
+}
+.title {
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+.group-by-container {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-top: 10px;
+  gap: 5px;
+}
+.group-by-container label {
+  font-size: 14px;
+}
+.group-by-container select {
+  font-size: 14px;
+  padding: 5px;
+  width: 150px;
+}
+</style>

@@ -32,7 +32,10 @@ import MyOrdersView from '@/views/orders/MyOrdersView.vue'
 import OrderDetailView from '@/views/orders/OrderDetailView.vue'
 import ReservationDetailsView from '@/views/reservations/ReservationDetailsView.vue'
 import VerifySecurityQuestionView from '@/views/auth/VerifySecurityQuestionView.vue'
-
+import SecurityPanelView from '../views/security/SecurityPanelView.vue'
+import WaiterPanelView from '@/views/mesero/WaiterPanelView.vue'
+import GamePanelView from '@/views/games/GamePanelView.vue'
+import ReservationsAdminPanelView from '@/views/reservations/ReservationsAdminPanelView.vue'
 const routes = [
   {
     path: '/',
@@ -44,11 +47,12 @@ const routes = [
     name: 'game-menu',
     component: GameMenuView,
   },
-  {
-    path: '/adminpanel',
-    name: 'adminpanel',
-    component: AdminPanelView,
-  },
+{
+  path: '/adminpanel',
+  name: 'adminpanel',
+  component: AdminPanelView,
+  meta: { roles: ['encargadoLocal'] },
+},
   {
     path: '/agregar-pedido',
     name: 'agregar-pedido',
@@ -70,11 +74,12 @@ const routes = [
     name: 'food-menu',
     component: FoodMenuView,
   },
-  {
-    path: '/food_panel',
-    name: 'food_panel',
-    component: FoodPanelView,
-  },
+{
+  path: '/food_panel',
+  name: 'food_panel',
+  component: FoodPanelView,
+  meta: { roles: ['encargadoLocal', 'mesero'] },
+},
   {
     path: '/form-reserva',
     name: 'form-reserva',
@@ -95,16 +100,18 @@ const routes = [
     name: 'new_password',
     component: NewPasswordView,
   },
-  {
-    path: '/pedidos_panel',
-    name: 'pedidos_panel',
-    component: OrdersPanelView,
-  },
-  {
-    path: '/perfil_admin',
-    name: 'perfil_admin',
-    component: AdminProfileView,
-  },
+{
+  path: '/pedidos_panel',
+  name: 'pedidos_panel',
+  component: OrdersPanelView,
+  meta: { roles: ['encargadoLocal', 'mesero'] },
+},
+{
+  path: '/perfil_admin',
+  name: 'perfil_admin',
+  component: AdminProfileView,
+  meta: { roles: ['encargadoLocal', 'encargadoSeguridad', 'mesero'] },
+},
   {
     path: '/perfil_user',
     name: 'perfil_user',
@@ -143,21 +150,22 @@ const routes = [
     name: 'register',
     component: RegisterView,
   },
-  {
-    path: '/registro_mesa',
-    name: 'registro_mesa',
-    component: RegisterTableView,
-  },
+{
+  path: '/registro_mesa',
+  name: 'registro_mesa',
+  component: RegisterTableView,
+  meta: { roles: ['encargadoLocal'] },
+},
   {
     path: '/reserva-active',
     name: 'reserva-active',
     component: ActiveReservationView,
   },
-  {
-    path: '/reservas_panel',
-    name: 'reservas_panel',
-    component: ReservationsPanelView,
-  },
+{
+  path: '/reservas_panelUser',
+  name: 'reservas_panelUser',
+  component: ReservationsPanelView,
+},
   {
     path: '/reset_password',
     name: 'reset_password',
@@ -183,11 +191,12 @@ const routes = [
     name: 'ver_pedidos',
     component: UserOrdersView,
   },
-  {
-    path: '/userspanel',
-    name: 'userspanel',
-    component: UsersPanelView,
-  },
+{
+  path: '/userspanel',
+  name: 'userspanel',
+  component: UsersPanelView,
+  meta: { roles: ['encargadoSeguridad'] },
+},
   {
     path: '/ver_Mispedidos',
     name: 'ver_Mispedidos',
@@ -218,12 +227,57 @@ const routes = [
     localStorage.removeItem('user')
     return '/login'
   }
-}
+},
+{
+  path: '/panel-seguridad',
+  name: 'panel-seguridad',
+  component: SecurityPanelView,
+  meta: { roles: ['encargadoSeguridad'] },
+},
+{
+  path: '/panel-mesero',
+  name: 'panel-mesero',
+  component: WaiterPanelView,
+},
+{
+  path: '/game_panel',
+  name: 'game_panel',
+  component: GamePanelView,
+  meta: { roles: ['encargadoLocal', 'mesero'] },
+},
+{
+  path: '/reservas_panel',
+  name: 'reservas_panel',
+  component: ReservationsAdminPanelView,
+  meta: { roles: ['encargadoLocal'] },
+},
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('token')
+  const user = JSON.parse(localStorage.getItem('user') || 'null')
+
+  if (!to.meta?.roles) {
+    next()
+    return
+  }
+
+  if (!token || !user) {
+    next('/login')
+    return
+  }
+
+  if (!to.meta.roles.includes(user.rol_id_rol)) {
+    next('/error')
+    return
+  }
+
+  next()
 })
 
 export default router

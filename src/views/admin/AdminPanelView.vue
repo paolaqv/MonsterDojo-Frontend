@@ -11,7 +11,7 @@
 
       <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
         <li><RouterLink to="/adminpanel">Inicio</RouterLink></li>
-        <li><RouterLink to="/userspanel">Usuarios</RouterLink></li>
+<li v-if="showUsers"><RouterLink to="/userspanel">Usuarios</RouterLink></li>        
         <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
         <li><RouterLink to="/food_panel">Comida</RouterLink></li>
         <li><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
@@ -27,15 +27,15 @@
 
     <div class="container">
       <div class="options-panel">
-        <div class="option">
-          <RouterLink to="/userspanel">
-            <i class="fa-solid fa-user"></i>
-          </RouterLink>
-          <span>Usuarios</span>
-        </div>
+<div v-if="showUsers" class="option">
+  <RouterLink to="/userspanel">
+    <i class="fa-solid fa-user"></i>
+  </RouterLink>
+  <span>Usuarios</span>
+</div>
 
         <div class="option">
-          <RouterLink to="/game-menu">
+          <RouterLink to="/game_panel">
             <i class="fa-solid fa-dice"></i>
           </RouterLink>
           <span>Juegos</span>
@@ -93,6 +93,9 @@ import '@/assets/css/adminpanel.css'
 import logo from '@/assets/images/logo.png'
 
 const menuOpen = ref(false)
+
+const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
+const showUsers = storedUser?.rol_id_rol === 'encargadoSeguridad'
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value

@@ -22,6 +22,10 @@ const search = ref('')
 const groupBy = ref('')
 const mesas = ref([])
 
+const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
+const userRole = storedUser?.rol_id_rol || ''
+const homeRoute = userRole === 'encargadoLocal' ? '/adminpanel' : '/panel-mesero'
+
 const showAddPopup = ref(false)
 const showEditPopup = ref(false)
 
@@ -296,18 +300,19 @@ onMounted(async () => {
         <i class="fa fa-bars"></i>
       </div>
 
-      <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
-        <li><RouterLink to="/adminpanel">Inicio</RouterLink></li>
-        <li><RouterLink to="/userspanel">Usuarios</RouterLink></li>
-        <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
-        <li><RouterLink to="/food_panel">Comida</RouterLink></li>
-        <li><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
-        <li><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
-        <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
-        <li>
-          <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
-        </li>
-      </ul>
+<ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
+  <li><RouterLink :to="homeRoute">Inicio</RouterLink></li>
+  <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
+  <li><RouterLink to="/food_panel">Comida</RouterLink></li>
+    <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
+  <li><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
+  <li><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
+  <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
+  <li>
+    <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
+  </li>
+  <li><RouterLink to="/logout"><i class="fa-solid fa-sign-out"></i></RouterLink></li>
+</ul>
     </nav>
 
     <div class="container">
@@ -329,8 +334,7 @@ onMounted(async () => {
           </div>
         </form>
 
-        <div class="add-buttons">
-          <button id="addProductBtn" type="button" @click="openAddPopup">
+<div v-if="userRole === 'encargadoLocal'" class="add-buttons">          <button id="addProductBtn" type="button" @click="openAddPopup">
             <i class="fa-solid fa-chair"></i> Registrar mesa
           </button>
           
@@ -347,8 +351,7 @@ onMounted(async () => {
               <th>ID</th>
               <th>Capacidad</th>
               <th>Ubicación</th>
-              <th>Acciones</th>
-            </tr>
+<th v-if="userRole === 'encargadoLocal'">Acciones</th>            </tr>
           </thead>
 
           <tbody>
@@ -360,7 +363,7 @@ onMounted(async () => {
               <td>{{ mesa.id_mesa }}</td>
               <td>{{ mesa.capacidad }}</td>
               <td>{{ mesa.ubicacion }}</td>
-              <td>
+              <td v-if="userRole === 'encargadoLocal'">
                 <div class="action-buttons">
                   <button type="button" class="editProductBtn" @click="openEditMesa(mesa.id_mesa)">
                     <i class="fa-solid fa-edit"></i>

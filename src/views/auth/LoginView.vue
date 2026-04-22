@@ -16,7 +16,6 @@ const errorMessage = ref('')
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
 }
-
 const handleLogin = async () => {
   try {
     errorMessage.value = ''
@@ -29,8 +28,18 @@ const handleLogin = async () => {
 
     const role = result?.user?.rol_id_rol || result?.user?.rol || ''
 
-    if (String(role).toLowerCase().includes('admin')) {
+    if (role === 'encargadoSeguridad') {
+      router.push('/panel-seguridad')
+      return
+    }
+
+    if (role === 'encargadoLocal') {
       router.push('/adminpanel')
+      return
+    }
+
+    if (role === 'mesero') {
+      router.push('/panel-mesero')
       return
     }
 

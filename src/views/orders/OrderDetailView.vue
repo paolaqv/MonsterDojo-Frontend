@@ -8,7 +8,18 @@ import { getOrderById, getOrderDetails } from '@/services/orders.service'
 
 const route = useRoute()
 const router = useRouter()
+const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
+const userRole = storedUser?.rol_id_rol || ''
 
+const isEncargadoLocal = computed(() => userRole === 'encargadoLocal')
+const isMesero = computed(() => userRole === 'mesero')
+const isCliente = computed(() => userRole === 'cliente')
+
+const homeRoute = computed(() => {
+  if (isEncargadoLocal.value) return '/adminpanel'
+  if (isMesero.value) return '/panel-mesero'
+  return '/inicio_usuario'
+})
 const menuOpen = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
@@ -123,16 +134,36 @@ onMounted(async () => {
         <i class="fa fa-bars"></i>
       </div>
 
-      <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
-        <li><RouterLink to="/adminpanel">Inicio</RouterLink></li>
-        <li><RouterLink to="/userspanel">Usuarios</RouterLink></li>
-        <li><RouterLink to="/game-menu">Juegos</RouterLink></li>
-        <li><RouterLink to="/food_panel">Comida</RouterLink></li>
-        <li><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
-        <li><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
-        <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
-        <li><RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink></li>
-      </ul>
+<ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
+  <li><RouterLink :to="homeRoute">Inicio</RouterLink></li>
+
+  <li v-if="isEncargadoLocal || isMesero">
+    <RouterLink to="/game_panel">Juegos</RouterLink>
+  </li>
+  <li v-else>
+    <RouterLink to="/game-menu">Juegos</RouterLink>
+  </li>
+
+  <li v-if="isEncargadoLocal || isMesero">
+    <RouterLink to="/food_panel">Comida</RouterLink>
+  </li>
+  <li v-else>
+    <RouterLink to="/food-menu">Comida</RouterLink>
+  </li>
+
+  <li v-if="isEncargadoLocal"><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
+  <li><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
+  <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
+
+  <li v-if="isEncargadoLocal">
+    <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
+  </li>
+  <li v-else>
+    <RouterLink to="/perfil_user"><i class="fa-solid fa-user"></i></RouterLink>
+  </li>
+
+  <li><RouterLink to="/logout"><i class="fa-solid fa-sign-out"></i></RouterLink></li>
+</ul>
     </nav>
 
     <div class="container">

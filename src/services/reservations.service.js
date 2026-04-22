@@ -59,3 +59,9 @@ export const updateReservationCheckout = async (reservationId, payload) => {
   const { data } = await api.put(`/reservations/${reservationId}/checkout`, payload)
   return data
 }
+
+export const getAdminReservations = async (params = {}) => {
+  const { data } = await api.get('/reservations/admin', { params })
+  return data
+}
+
