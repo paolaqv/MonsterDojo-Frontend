@@ -1,0 +1,140 @@
+.
+|-- README.md
+|-- estructura.txt
+|-- index.html
+|-- jsconfig.json
+|-- package-lock.json
+|-- package.json
+|-- public
+|   `-- favicon.ico
+|-- src
+|   |-- App.vue
+|   |-- assets
+|   |   |-- css
+|   |   |   |-- adminpanel.css
+|   |   |   |-- food-menu.css
+|   |   |   |-- food-panel.css
+|   |   |   |-- form-reserva.css
+|   |   |   |-- game-menu.css
+|   |   |   |-- inicio-usuario.css
+|   |   |   |-- inicio.css
+|   |   |   |-- navbar.css
+|   |   |   |-- perfil_usuario.css
+|   |   |   |-- popup.css
+|   |   |   |-- popup_carrito.css
+|   |   |   |-- popup_panel.css
+|   |   |   |-- receipt.css
+|   |   |   |-- reserva-activa.css
+|   |   |   |-- roles-panel.css
+|   |   |   |-- user.css
+|   |   |   |-- userforms.css
+|   |   |   `-- userspanel.css
+|   |   |-- images
+|   |   |   |-- about_us_md.jpg
+|   |   |   |-- agregar_usuario.png
+|   |   |   |-- background.jpg
+|   |   |   |-- category.png
+|   |   |   |-- comedor.png
+|   |   |   |-- dados.png
+|   |   |   |-- editar_usuario.png
+|   |   |   |-- espadas.png
+|   |   |   |-- food1.jpg
+|   |   |   |-- food10.jpg
+|   |   |   |-- food11.jpg
+|   |   |   |-- food12.jpg
+|   |   |   |-- food2.jpg
+|   |   |   |-- food3.jpg
+|   |   |   |-- food4.jpg
+|   |   |   |-- food5.jpg
+|   |   |   |-- food6.jpg
+|   |   |   |-- food7.jpg
+|   |   |   |-- food8.jpg
+|   |   |   |-- food9.jpg
+|   |   |   |-- hamburguer.png
+|   |   |   |-- logo.png
+|   |   |   |-- logo_md.png
+|   |   |   |-- logoalt.png
+|   |   |   |-- menu.png
+|   |   |   |-- mesa.png
+|   |   |   |-- portada_md.jpg
+|   |   |   |-- reservas_md.jpeg
+|   |   |   `-- user_photo.png
+|   |   `-- main.css
+|   |-- components
+|   |   |-- common
+|   |   |   |-- ErrorView.vue
+|   |   |   `-- HomeView.vue
+|   |   |-- navigation
+|   |   |   |-- StaffNavbar.vue
+|   |   |   |-- StaffOptionsPanel.vue
+|   |   |   `-- UserNavbar.vue
+|   |   `-- popups
+|   |       `-- ShoppingCartPopup.vue
+|   |-- composables
+|   |   `-- usePermissions.js
+|   |-- main.js
+|   |-- router
+|   |   `-- index.js
+|   |-- services
+|   |   |-- api.js
+|   |   |-- auth.service.js
+|   |   |-- games.service.js
+|   |   |-- orders.service.js
+|   |   |-- products.service.js
+|   |   |-- reservations.service.js
+|   |   |-- roles.service.js
+|   |   |-- tables.service.js
+|   |   `-- users.service.js
+|   |-- stores
+|   |   |-- auth.js
+|   |   `-- counter.js
+|   |-- utils
+|   |   `-- permissions.js
+|   `-- views
+|       |-- admin
+|       |   |-- AdminPanelView.vue
+|       |   |-- AdminProfileView.vue
+|       |   `-- UsersPanelView.vue
+|       |-- auth
+|       |   |-- LoginView.vue
+|       |   |-- NewPasswordView.vue
+|       |   |-- RegisterView.vue
+|       |   |-- ResetPasswordView.vue
+|       |   |-- ResetSecurityQuestionView.vue
+|       |   `-- VerifySecurityQuestionView.vue
+|       |-- games
+|       |   |-- GameMenuView.vue
+|       |   `-- GamePanelView.vue
+|       |-- mesero
+|       |   `-- WaiterPanelView.vue
+|       |-- orders
+|       |   |-- AddOrderView.vue
+|       |   |-- MyOrdersView.vue
+|       |   |-- OrderDetailView.vue
+|       |   |-- OrderReceiptView.vue
+|       |   |-- OrdersPanelView.vue
+|       |   |-- UserOrderReceiptView.vue
+|       |   `-- UserOrdersView.vue
+|       |-- products
+|       |   |-- FoodMenuView.vue
+|       |   `-- FoodPanelView.vue
+|       |-- reservations
+|       |   |-- ActiveReservationView.vue
+|       |   |-- EditReservationView.vue
+|       |   |-- NoActiveReservationView.vue
+|       |   |-- RegisterTableView.vue
+|       |   |-- ReservationDetailsView.vue
+|       |   |-- ReservationFormView.vue
+|       |   |-- ReservationReceiptView.vue
+|       |   |-- ReservationsAdminPanelView.vue
+|       |   |-- ReservationsPanelView.vue
+|       |   `-- UserReservationView.vue
+|       |-- security
+|       |   |-- RoleFormPopup.vue
+|       |   `-- SecurityPanelView.vue
+|       `-- user
+|           |-- UserHomeView.vue
+|           `-- UserProfileView.vue
+`-- vite.config.js
+
+24 directories, 113 files
