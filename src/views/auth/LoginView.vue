@@ -4,9 +4,9 @@ import { RouterLink, useRouter } from 'vue-router'
 import '@/assets/css/userforms.css'
 import logo from '@/assets/images/logo.png'
 import { login } from '@/services/auth.service'
-
+import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
-
+const authStore = useAuthStore()
 const menuOpen = ref(false)
 const correo = ref('')
 const password = ref('')
@@ -25,9 +25,8 @@ const handleLogin = async () => {
       correo: correo.value,
       password: password.value,
     })
-    localStorage.setItem('token', result.access_token)
-    localStorage.setItem('user', JSON.stringify(result.user))
-
+      authStore.setSession(result)
+      authStore.startAutoRefresh()
 
     const role = result?.user?.rol_id_rol || result?.user?.rol || ''
 

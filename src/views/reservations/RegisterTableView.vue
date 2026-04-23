@@ -1,11 +1,11 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import Swal from 'sweetalert2'
 import '@/assets/css/popup_panel.css'
-import logo from '@/assets/images/logo.png'
 import mesaImg from '@/assets/images/mesa.png'
 import comedorImg from '@/assets/images/comedor.png'
+import StaffNavbar from '@/components/navigation/StaffNavbar.vue'
+import { usePermissions } from '@/composables/usePermissions'
 import {
   archiveTable,
   createTable,
@@ -15,16 +15,18 @@ import {
   updateTable,
 } from '@/services/tables.service'
 
-const menuOpen = ref(false)
+const { hasPermission, hasRole } = usePermissions()
+
 const loading = ref(false)
 const errorMessage = ref('')
 const search = ref('')
 const groupBy = ref('')
 const mesas = ref([])
 
-const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
-const userRole = storedUser?.rol_id_rol || ''
-const homeRoute = userRole === 'encargadoLocal' ? '/adminpanel' : '/panel-mesero'
+const canManageTables = computed(() => hasPermission('gestionar_mesas'))
+const homeRoute = computed(() =>
+  hasRole('encargadoLocal') ? '/adminpanel' : '/panel-mesero'
+)
 
 const showAddPopup = ref(false)
 const showEditPopup = ref(false)
@@ -39,10 +41,6 @@ const editForm = ref({
   capacidad: '',
   ubicacion: '',
 })
-
-const toggleMenu = () => {
-  menuOpen.value = !menuOpen.value
-}
 
 const loadTables = async () => {
   try {
@@ -81,6 +79,7 @@ const filteredMesas = computed(() => {
 })
 
 const openAddPopup = () => {
+  if (!canManageTables.value) return
   showAddPopup.value = true
 }
 
@@ -134,6 +133,7 @@ const confirmCancel = (formType) => {
 
 const handleMesaSubmit = async (event) => {
   event.preventDefault()
+  if (!canManageTables.value) return
 
   try {
     await createTable({
@@ -168,6 +168,8 @@ const handleMesaSubmit = async (event) => {
 }
 
 const openEditMesa = async (mesaId) => {
+  if (!canManageTables.value) return
+
   try {
     const data = await getTableById(mesaId)
 
@@ -185,6 +187,7 @@ const openEditMesa = async (mesaId) => {
 
 const handleEditMesaSubmit = async (event) => {
   event.preventDefault()
+  if (!canManageTables.value) return
 
   try {
     await updateTable(editForm.value.id, {
@@ -220,6 +223,7 @@ const handleEditMesaSubmit = async (event) => {
 
 const confirmDelete = (event, mesaId) => {
   event.preventDefault()
+  if (!canManageTables.value) return
 
   Swal.fire({
     title: '¿Está seguro?',
@@ -255,6 +259,7 @@ const confirmDelete = (event, mesaId) => {
 
 const confirmUnarchive = (event, mesaId) => {
   event.preventDefault()
+  if (!canManageTables.value) return
 
   Swal.fire({
     title: '¿Está seguro?',
@@ -291,29 +296,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <nav class="navbar">
-      <div class="nav-logo">
-        <img :src="logo" alt="Monster Dojo" />
-      </div>
-
-      <div class="nav-hamburger" @click="toggleMenu">
-        <i class="fa fa-bars"></i>
-      </div>
-
-<ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
-  <li><RouterLink :to="homeRoute">Inicio</RouterLink></li>
-  <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
-  <li><RouterLink to="/food_panel">Comida</RouterLink></li>
-    <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
-  <li><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
-  <li><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
-  <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
-  <li>
-    <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
-  </li>
-  <li><RouterLink to="/logout"><i class="fa-solid fa-sign-out"></i></RouterLink></li>
-</ul>
-    </nav>
+    <StaffNavbar :homeRoute="homeRoute" profileRoute="/perfil_admin" />
 
     <div class="container">
       <div class="title">Registro de mesas</div>
@@ -334,10 +317,10 @@ onMounted(async () => {
           </div>
         </form>
 
-<div v-if="userRole === 'encargadoLocal'" class="add-buttons">          <button id="addProductBtn" type="button" @click="openAddPopup">
+<div v-if="canManageTables" class="add-buttons">
+          <button id="addProductBtn" type="button" @click="openAddPopup">
             <i class="fa-solid fa-chair"></i> Registrar mesa
           </button>
-          
         </div>
       </div>
 
@@ -351,19 +334,20 @@ onMounted(async () => {
               <th>ID</th>
               <th>Capacidad</th>
               <th>Ubicación</th>
-<th v-if="userRole === 'encargadoLocal'">Acciones</th>            </tr>
+              <th v-if="canManageTables">Acciones</th>            
+            </tr>
           </thead>
 
           <tbody>
             <tr v-if="filteredMesas.length === 0">
-              <td colspan="4">No hay mesas registradas.</td>
+              <td :colspan="canManageTables ? 4 : 3">No hay mesas registradas.</td>
             </tr>
 
             <tr v-for="mesa in filteredMesas" :key="mesa.id_mesa">
               <td>{{ mesa.id_mesa }}</td>
               <td>{{ mesa.capacidad }}</td>
               <td>{{ mesa.ubicacion }}</td>
-              <td v-if="userRole === 'encargadoLocal'">
+              <td v-if="canManageTables">
                 <div class="action-buttons">
                   <button type="button" class="editProductBtn" @click="openEditMesa(mesa.id_mesa)">
                     <i class="fa-solid fa-edit"></i>

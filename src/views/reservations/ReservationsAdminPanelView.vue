@@ -1,24 +1,36 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import '@/assets/css/inicio.css'
 import '@/assets/css/navbar.css'
 import '@/assets/css/food-panel.css'
 import '@/assets/css/popup_panel.css'
-import logo from '@/assets/images/logo.png'
+import StaffNavbar from '@/components/navigation/StaffNavbar.vue'
+import { usePermissions } from '@/composables/usePermissions'
 import {
   getAdminReservations,
   updateReservation,
 } from '@/services/reservations.service'
 
 const router = useRouter()
+const { hasPermission, hasRole } = usePermissions()
 
-const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
-const userRole = storedUser?.rol_id_rol || ''
-const homeRoute = userRole === 'encargadoLocal' ? '/adminpanel' : '/panel-mesero'
+const canViewReservationDetails = computed(() => hasPermission('ver_reservas_detalle'))
+const canManageReservations = computed(() => hasPermission('gestionar_reservas'))
 
-const menuOpen = ref(false)
+const homeRoute = computed(() => {
+  if (hasRole('encargadoLocal')) return '/adminpanel'
+  if (hasRole('mesero')) return '/panel-mesero'
+  if (hasRole('encargadoSeguridad')) return '/panel-seguridad'
+  return '/login'
+})
+
+const profileRoute = computed(() => {
+  if (hasRole('encargadoLocal') || hasRole('encargadoSeguridad')) return '/perfil_admin'
+  return '/perfil_usuario'
+})
+
 const selectedGroup = ref('todas')
 const reservas = ref([])
 const errorMessage = ref('')
@@ -26,10 +38,6 @@ const loading = ref(false)
 const searchQuery = ref('')
 const sortBy = ref('')
 const sortOrder = ref('asc')
-
-const toggleMenu = () => {
-  menuOpen.value = !menuOpen.value
-}
 
 const normalizeEstado = (estado) => String(estado || '').trim().toLowerCase()
 
@@ -47,7 +55,9 @@ const reservasFiltradas = computed(() => {
     data = data.filter((reserva) => {
       return (
         String(reserva.id_reserva || '').toLowerCase().includes(query) ||
-        String(reserva.usuario?.nombre || reserva.usuario_rel?.nombre || '').toLowerCase().includes(query) ||
+        String(reserva.usuario?.nombre || reserva.usuario_rel?.nombre || '')
+          .toLowerCase()
+          .includes(query) ||
         String(reserva.fecha_hora || '').toLowerCase().includes(query) ||
         String(reserva.estado || '').toLowerCase().includes(query) ||
         String(reserva.monto_total || '').toLowerCase().includes(query)
@@ -92,10 +102,7 @@ const loadReservas = async () => {
     errorMessage.value = ''
 
     const data = await getAdminReservations()
-
-    reservas.value = Array.isArray(data)
-      ? data
-      : (data?.items || data?.results || [])
+    reservas.value = Array.isArray(data) ? data : data?.items || data?.results || []
   } catch (error) {
     errorMessage.value =
       error?.response?.data?.detail || 'No se pudieron cargar las reservas.'
@@ -105,6 +112,8 @@ const loadReservas = async () => {
 }
 
 const deleteReserva = (reserva) => {
+  if (!canManageReservations.value) return
+
   Swal.fire({
     title: '¿Está seguro?',
     text: '¿Está seguro de cancelar la reserva?',
@@ -138,6 +147,7 @@ const deleteReserva = (reserva) => {
 }
 
 const verDetalles = (idReserva) => {
+  if (!canViewReservationDetails.value) return
   router.push({ name: 'verDetalle-reserva', params: { id: idReserva } })
 }
 
@@ -182,28 +192,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="navbar">
-      <div class="nav-logo">
-        <img :src="logo" alt="Monster Dojo" />
-      </div>
-
-      <button class="menu-toggle" type="button" @click="toggleMenu">
-        <span class="fas fa-bars"></span>
-      </button>
-
-      <div class="navbar-right" :class="{ active: menuOpen }">
-        <li><RouterLink :to="homeRoute">Inicio</RouterLink></li>
-        <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
-        <li><RouterLink to="/food_panel">Comida</RouterLink></li>
-        <li><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
-        <li><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
-        <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
-        <li>
-          <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
-        </li>
-        <li><RouterLink to="/logout"><i class="fa-solid fa-sign-out"></i></RouterLink></li>
-      </div>
-    </div>
+    <StaffNavbar :homeRoute="homeRoute" :profileRoute="profileRoute" />
 
     <div class="container">
       <div class="title">Panel de Reservas</div>
@@ -293,6 +282,7 @@ onMounted(async () => {
               <td>
                 <div class="action-buttons">
                   <button
+                    v-if="canViewReservationDetails"
                     type="button"
                     class="verDetallesBtn"
                     @click="verDetalles(reserva.id_reserva)"
@@ -301,7 +291,10 @@ onMounted(async () => {
                   </button>
 
                   <button
-                    v-if="normalizeEstado(reserva.estado) === 'reservado'"
+                    v-if="
+                      canManageReservations &&
+                      normalizeEstado(reserva.estado) === 'reservado'
+                    "
                     type="button"
                     class="deleteReservaBtn"
                     @click="deleteReserva(reserva)"

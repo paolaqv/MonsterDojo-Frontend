@@ -516,7 +516,7 @@ onMounted(async () => {
 
 <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
   <li><RouterLink :to="homeRoute">Inicio</RouterLink></li>
-  <li><RouterLink to="/game-menu">Juegos</RouterLink></li>
+  <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
   <li><RouterLink to="/food_panel">Comida</RouterLink></li>
   <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
 

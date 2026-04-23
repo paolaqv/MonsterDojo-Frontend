@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import Swal from 'sweetalert2'
 import '@/assets/css/userspanel.css'
 import '@/assets/css/popup.css'
@@ -21,6 +22,7 @@ import {
   updateRole,
 } from '@/services/roles.service'
 
+const authStore = useAuthStore()
 const menuOpen = ref(false)
 const search = ref('')
 const users = ref([])
@@ -97,6 +99,7 @@ const getRoleAccessSummary = (role) => {
   if (permisos.includes('ver_mesas')) accesses.push('Ver mesas')
   if (permisos.includes('gestionar_mesas')) accesses.push('Gestión mesas')
   if (permisos.includes('ver_reservas_detalle')) accesses.push('Ver reservas y detalle')
+  if (permisos.includes('crear_reservas')) accesses.push('Crear reservas')
   if (permisos.includes('gestionar_reservas')) accesses.push('Gestión reservas')
 
   return accesses
@@ -133,6 +136,7 @@ const saveRole = async (roleData) => {
       verMesas: 'ver_mesas',
       gestionarMesas: 'gestionar_mesas',
       verReservas: 'ver_reservas_detalle',
+      crearReservas: 'crear_reservas',
       gestionarReservas: 'gestionar_reservas',
     }
 
@@ -169,6 +173,7 @@ const saveRole = async (roleData) => {
 
     closeRolePopup()
     await loadRoles()
+    await authStore.refreshCurrentUser()
   } catch (error) {
     Swal.fire({
       title: 'Error',
@@ -182,24 +187,54 @@ const saveRole = async (roleData) => {
   }
 }
 
-const toggleRoleStatus = async (role) => {
-  try {
-    await updateRole(role.id_rol, {
-      nombre: role.nombre,
-      activo: !role.activo,
-    })
-    await loadRoles()
-  } catch (error) {
-    Swal.fire({
-      title: 'Error',
-      text: error?.response?.data?.detail || 'No se pudo actualizar el estado del rol.',
-      icon: 'error',
-      confirmButtonText: 'OK',
-      customClass: {
-        confirmButton: 'swal2-confirm',
-      },
-    })
-  }
+const toggleRoleStatus = (role) => {
+  const newStatus = !role.activo
+
+  Swal.fire({
+    title: '¿Está seguro?',
+    text: `¿Desea ${newStatus ? 'activar' : 'desactivar'} el rol "${role.nombre}"?`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: `Sí, ${newStatus ? 'activar' : 'desactivar'}`,
+    cancelButtonText: 'No, cancelar',
+    customClass: {
+      confirmButton: 'swal2-confirm',
+      cancelButton: 'swal2-cancel',
+    },
+  }).then(async (result) => {
+    if (!result.isConfirmed) return
+
+    try {
+      await updateRole(role.id_rol, {
+        nombre: role.nombre,
+        activo: newStatus,
+      })
+
+      await Swal.fire({
+        title: '¡Éxito!',
+        text: `El rol fue ${newStatus ? 'activado' : 'desactivado'} correctamente.`,
+        icon: 'success',
+        confirmButtonText: 'OK',
+        customClass: {
+          confirmButton: 'swal2-confirm',
+        },
+      })
+
+      await loadRoles()
+      await authStore.refreshCurrentUser()
+    } catch (error) {
+      Swal.fire({
+        title: 'Error',
+        text: error?.response?.data?.detail || 'No se pudo actualizar el estado del rol.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+        customClass: {
+          confirmButton: 'swal2-confirm',
+        },
+      })
+      await loadRoles()
+    }
+  })
 }
 
 const confirmDeleteRole = (roleId) => {
@@ -219,6 +254,7 @@ const confirmDeleteRole = (roleId) => {
       try {
         await deleteRole(roleId)
         await loadRoles()
+        await authStore.refreshCurrentUser()
       } catch (error) {
         Swal.fire({
           title: 'Error',
@@ -540,11 +576,11 @@ const confirmDelete = (userId) => {
           <td>{{ role.id_rol }}</td>
           <td>{{ role.nombre }}</td>
           <td>
-            <label class="modern-switch">
+          <label class="modern-switch">
             <input
               type="checkbox"
               :checked="role.activo"
-              @change="toggleRoleStatus(role)"
+              @click.prevent="toggleRoleStatus(role)"
             />
             <span class="slider"></span>
           </label>

@@ -1,13 +1,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import '@/assets/css/food-panel.css'
 import '@/assets/css/popup_panel.css'
-import logo from '@/assets/images/logo.png'
 import menuImg from '@/assets/images/espadas.png'
 import editImg from '@/assets/images/dados.png'
 import categoryImg from '@/assets/images/category.png'
+import StaffNavbar from '@/components/navigation/StaffNavbar.vue'
+import { usePermissions } from '@/composables/usePermissions'
 import {
   createGame,
   createGameCategory,
@@ -17,20 +17,24 @@ import {
   updateGame,
 } from '@/services/games.service'
 
-const router = useRouter()
+const { hasPermission, hasRole } = usePermissions()
 
-const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
-const userRole = storedUser?.rol_id_rol || ''
-
-const isMesero = computed(() => userRole === 'mesero')
-const isEncargadoLocal = computed(() => userRole === 'encargadoLocal')
+const canViewGames = computed(() => hasPermission('ver_juegos'))
+const canManageGames = computed(() => hasPermission('gestionar_juegos'))
+const canManageGameCategories = computed(() => hasPermission('gestionar_categorias_juegos'))
 
 const homeRoute = computed(() => {
-  if (isMesero.value) return '/panel-mesero'
-  return '/adminpanel'
+  if (hasRole('mesero')) return '/panel-mesero'
+  if (hasRole('encargadoLocal')) return '/adminpanel'
+  if (hasRole('encargadoSeguridad')) return '/panel-seguridad'
+  return '/login'
 })
 
-const menuOpen = ref(false)
+const profileRoute = computed(() => {
+  if (hasRole('encargadoLocal') || hasRole('encargadoSeguridad')) return '/perfil_admin'
+  return '/perfil_usuario'
+})
+
 const search = ref('')
 const groupBy = ref('')
 const categorias = ref([])
@@ -65,10 +69,6 @@ const editForm = ref({
 const categoryForm = ref({
   nombre: '',
 })
-
-const toggleMenu = () => {
-  menuOpen.value = !menuOpen.value
-}
 
 const normalizeImage = (imagen) => {
   if (!imagen) return ''
@@ -113,24 +113,17 @@ const loadData = async () => {
 
     categorias.value = Array.isArray(categoriasData)
       ? categoriasData
-      : (categoriasData?.items || categoriasData?.results || [])
+      : categoriasData?.items || categoriasData?.results || []
 
     const juegosArray = Array.isArray(juegosData)
       ? juegosData
-      : (juegosData?.items || juegosData?.results || [])
+      : juegosData?.items || juegosData?.results || []
 
     juegos.value = juegosArray.map((juego) => ({
       ...juego,
       imagen: normalizeImage(juego.imagen),
     }))
   } catch (error) {
-    if (error?.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      router.push('/login')
-      return
-    }
-
     Swal.fire({
       title: 'Error',
       text: error?.response?.data?.detail || 'No se pudieron cargar los juegos.',
@@ -170,11 +163,13 @@ const filteredJuegos = computed(() => {
 })
 
 const openAddGamePopup = () => {
+  if (!canManageGames.value) return
   showAddGamePopup.value = true
   currentTab.value = 0
 }
 
 const openCategoryPopup = () => {
+  if (!canManageGameCategories.value) return
   showCategoryPopup.value = true
 }
 
@@ -296,6 +291,7 @@ const showSuccessMessage = (popupType, message) => {
 
 const handleGameSubmit = async (event) => {
   event.preventDefault()
+  if (!canManageGames.value) return
 
   try {
     const imagenBase64 = await fileToBase64(regForm.value.imagen)
@@ -325,6 +321,7 @@ const handleGameSubmit = async (event) => {
 
 const handleCategorySubmit = async (event) => {
   event.preventDefault()
+  if (!canManageGameCategories.value) return
 
   try {
     await createGameCategory({
@@ -346,6 +343,8 @@ const handleCategorySubmit = async (event) => {
 }
 
 const openEditPopup = async (gameId) => {
+  if (!canManageGames.value) return
+
   try {
     const data = await getGameById(gameId)
 
@@ -376,6 +375,7 @@ const openEditPopup = async (gameId) => {
 
 const handleEditGameSubmit = async (event) => {
   event.preventDefault()
+  if (!canManageGames.value) return
 
   try {
     const nuevaImagen = editForm.value.imagen
@@ -407,6 +407,7 @@ const handleEditGameSubmit = async (event) => {
 
 const confirmDelete = (event, juego) => {
   event.preventDefault()
+  if (!canManageGames.value) return
 
   Swal.fire({
     title: '¿Está seguro?',
@@ -453,6 +454,7 @@ const confirmDelete = (event, juego) => {
 
 const confirmUnarchive = (event, juego) => {
   event.preventDefault()
+  if (!canManageGames.value) return
 
   Swal.fire({
     title: '¿Está seguro?',
@@ -490,45 +492,23 @@ const confirmUnarchive = (event, juego) => {
 }
 
 onMounted(async () => {
+  if (!canViewGames.value) return
   await loadData()
 })
 </script>
 
 <template>
   <div>
-    <nav class="navbar">
-      <div class="nav-logo">
-        <img :src="logo" alt="Monster Dojo" />
-      </div>
-
-      <div class="nav-hamburger" @click="toggleMenu">
-        <i class="fa fa-bars"></i>
-      </div>
-
-      <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
-        <li><RouterLink :to="homeRoute">Inicio</RouterLink></li>
-        <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
-        <li><RouterLink to="/food_panel">Comida</RouterLink></li>
-        <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
-
-        <li v-if="isEncargadoLocal"><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
-        <li v-if="isEncargadoLocal"><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
-        <li v-if="isEncargadoLocal">
-          <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
-        </li>
-
-        <li><RouterLink to="/logout"><i class="fa-solid fa-sign-out"></i></RouterLink></li>
-      </ul>
-    </nav>
+    <StaffNavbar :homeRoute="homeRoute" :profileRoute="profileRoute" />
 
     <div class="container">
       <div class="title">Panel de Juegos</div>
 
       <div class="actions-container">
-        <form method="GET" action="/game_panel">
+        <form @submit.prevent>
           <div class="search-container">
             <input v-model="search" type="text" name="search" placeholder="Buscar juego" />
-            <button type="submit">Buscar <i class="fa-solid fa-search"></i></button>
+            <button type="button">Buscar <i class="fa-solid fa-search"></i></button>
           </div>
 
           <div class="group-by-container">
@@ -547,11 +527,16 @@ onMounted(async () => {
           </div>
         </form>
 
-        <div v-if="isEncargadoLocal" class="add-buttons">
-          <button id="addGameBtn" @click="openAddGamePopup">
+        <div v-if="canManageGames || canManageGameCategories" class="add-buttons">
+          <button v-if="canManageGames" id="addGameBtn" type="button" @click="openAddGamePopup">
             <i class="fa-solid fa-dice"></i> Agregar Juego
           </button>
-          <button id="addCategoryBtn" @click="openCategoryPopup">
+          <button
+            v-if="canManageGameCategories"
+            id="addCategoryBtn"
+            type="button"
+            @click="openCategoryPopup"
+          >
             <i class="fa-solid fa-list"></i> Agregar Categoría
           </button>
         </div>
@@ -567,11 +552,15 @@ onMounted(async () => {
               <th>Precio Alquiler</th>
               <th>Imagen</th>
               <th>Categoría</th>
-              <th v-if="isEncargadoLocal">Acciones</th>
+              <th v-if="canManageGames">Acciones</th>
             </tr>
           </thead>
 
           <tbody>
+            <tr v-if="filteredJuegos.length === 0">
+              <td :colspan="canManageGames ? 7 : 6">No hay juegos disponibles.</td>
+            </tr>
+
             <tr v-for="juego in filteredJuegos" :key="juego.id_juego">
               <td>{{ juego.id_juego }}</td>
               <td>{{ juego.nombre }}</td>
@@ -581,14 +570,16 @@ onMounted(async () => {
                 <img :src="juego.imagen" :alt="`Imagen de ${juego.nombre}`" width="100" />
               </td>
               <td>{{ juego.categoria_juego?.nombre }}</td>
-              <td v-if="isEncargadoLocal">
+
+              <td v-if="canManageGames">
                 <div class="action-buttons">
-                  <button class="editGameBtn" @click="openEditPopup(juego.id_juego)">
+                  <button type="button" class="editGameBtn" @click="openEditPopup(juego.id_juego)">
                     <i class="fa-solid fa-edit"></i>
                   </button>
 
                   <button
                     v-if="juego.activo"
+                    type="button"
                     class="deleteGameBtn"
                     @click="confirmDelete($event, juego)"
                   >
@@ -597,6 +588,7 @@ onMounted(async () => {
 
                   <button
                     v-else
+                    type="button"
                     class="unarchiveProductBtn"
                     @click="confirmUnarchive($event, juego)"
                   >
@@ -610,7 +602,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="showAddGamePopup && isEncargadoLocal" class="popup" id="contactPopup">
+    <div v-if="showAddGamePopup && canManageGames" class="popup" id="contactPopup">
       <div class="popup-content">
         <span class="close-btn" @click="closePopup">&times;</span>
         <img :src="menuImg" alt="Game Icon" class="product-icon" />
@@ -680,7 +672,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="showEditGamePopup && isEncargadoLocal" class="popup" id="editPopup">
+    <div v-if="showEditGamePopup && canManageGames" class="popup" id="editPopup">
       <div class="popup-content">
         <span class="close-btn" @click="closeEditPopup">&times;</span>
         <img :src="editImg" alt="Game Icon" class="product-icon" />
@@ -749,7 +741,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="showCategoryPopup && isEncargadoLocal" class="popup" id="categoryPopup">
+    <div v-if="showCategoryPopup && canManageGameCategories" class="popup" id="categoryPopup">
       <div class="popup-content">
         <span class="close-btn" @click="closeCategoryPopup">&times;</span>
         <img :src="categoryImg" alt="Category Icon" class="product-icon" />

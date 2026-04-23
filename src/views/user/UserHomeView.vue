@@ -1,9 +1,6 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
 import '@/assets/css/inicio-usuario.css'
 import '@/assets/css/navbar.css'
-import logo from '@/assets/images/logo.png'
 import logoMd from '@/assets/images/logo_md.png'
 import food1 from '@/assets/images/food1.jpg'
 import food2 from '@/assets/images/food2.jpg'
@@ -11,54 +8,14 @@ import food3 from '@/assets/images/food3.jpg'
 import food4 from '@/assets/images/food4.jpg'
 import food5 from '@/assets/images/food5.jpg'
 import food6 from '@/assets/images/food6.jpg'
-import { getCurrentUser } from '@/services/users.service'
-
-const router = useRouter()
-
-const menuOpen = ref(false)
-const user = ref(null)
-
-const toggleMenu = () => {
-  menuOpen.value = !menuOpen.value
-}
-
-const closeMenu = () => {
-  menuOpen.value = false
-}
-
-onMounted(async () => {
-  try {
-    user.value = await getCurrentUser()
-  } catch (error) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    router.push('/login')
-  }
-})
+import UserNavbar from '@/components/navigation/UserNavbar.vue'
 </script>
 
 <template>
   <div class="home-page">
+    <UserNavbar />
+
     <header>
-      <div class="navbar">
-        <div class="nav-logo">
-          <img :src="logo" alt="Monster Dojo" />
-        </div>
-
-        <button class="menu-toggle" @click="toggleMenu">
-          <span class="fas fa-bars"></span>
-        </button>
-
-        <div class="navbar-right" :class="{ active: menuOpen }">
-          <RouterLink to="/inicio_usuario" @click="closeMenu">Home</RouterLink>
-          <RouterLink to="/food-menu" @click="closeMenu">Menu</RouterLink>
-          <RouterLink to="/game-menu" @click="closeMenu">Productos</RouterLink>
-          <RouterLink to="/user_reservation" @click="closeMenu">Reservas</RouterLink>
-          <RouterLink to="/ver_pedidos" @click="closeMenu">Pedidos</RouterLink>
-          <RouterLink to="/perfil_user" @click="closeMenu"><i class="fas fa-user"></i></RouterLink>
-        </div>
-      </div>
-
       <div class="overlay">
         <section id="home">
           <h1 class="h-primary">Bienvenidos a Monster Dojo</h1>
@@ -74,18 +31,18 @@ onMounted(async () => {
       </div>
 
       <div class="card">
-        <img :src="food1" alt="" />
+        <img :src="food1" alt="Bebidas preparadas" />
         <div class="details">
-        <div class="text-center">
-          <div class="details-sub">
-            <h5>Bebidas preparadas</h5>
+          <div class="text-center">
+            <div class="details-sub">
+              <h5>Bebidas preparadas</h5>
+            </div>
           </div>
-        </div>
         </div>
       </div>
 
       <div class="card">
-        <img :src="food2" alt="" />
+        <img :src="food2" alt="Tiramisu" />
         <div class="details">
           <div class="details-sub">
             <h5>Tiramisu</h5>
@@ -94,7 +51,7 @@ onMounted(async () => {
       </div>
 
       <div class="card">
-        <img :src="food3" alt="" />
+        <img :src="food3" alt="Fetuccine" />
         <div class="details">
           <div class="details-sub">
             <h5>Fetuccine</h5>
@@ -103,7 +60,7 @@ onMounted(async () => {
       </div>
 
       <div class="card">
-        <img :src="food4" alt="" />
+        <img :src="food4" alt="Crispy chicken" />
         <div class="details">
           <div class="details-sub">
             <h5>Crispy chicken</h5>
@@ -112,7 +69,7 @@ onMounted(async () => {
       </div>
 
       <div class="card">
-        <img :src="food5" alt="" />
+        <img :src="food5" alt="Pizzas" />
         <div class="details">
           <div class="details-sub">
             <h5>Pizzas</h5>
@@ -121,7 +78,7 @@ onMounted(async () => {
       </div>
 
       <div class="card">
-        <img :src="food6" alt="" />
+        <img :src="food6" alt="Affogato" />
         <div class="details">
           <div class="details-sub">
             <h5>Affogato</h5>
@@ -135,13 +92,21 @@ onMounted(async () => {
       <div class="about_row">
         <div class="about_column" style="text-align: justify;">
           <p>
-            ¡Bienvenidos a Monster Dojo! Somos más que un restaurante: somos tu destino ideal para disfrutar de una experiencia única combinando deliciosas comidas y bebidas con entretenimiento sin igual.
-            En Monster Dojo, te ofrecemos una variada selección de juegos de mesa que prometen horas de diversión y risas. Nuestro compromiso con una atención de primera y ambientes acogedores hacen de cada visita una ocasión especial. Además, facilitamos tu comodidad con servicios en línea para que puedas disfrutar de nuestra oferta gastronómica y de entretenimiento desde donde estés. Ven a descubrir por qué en Monster Dojo, cada momento es una aventura deliciosa y divertida.
+            ¡Bienvenidos a Monster Dojo! Somos más que un restaurante: somos tu
+            destino ideal para disfrutar de una experiencia única combinando
+            deliciosas comidas y bebidas con entretenimiento sin igual. En
+            Monster Dojo, te ofrecemos una variada selección de juegos de mesa
+            que prometen horas de diversión y risas. Nuestro compromiso con una
+            atención de primera y ambientes acogedores hacen de cada visita una
+            ocasión especial. Además, facilitamos tu comodidad con servicios en
+            línea para que puedas disfrutar de nuestra oferta gastronómica y de
+            entretenimiento desde donde estés. Ven a descubrir por qué en
+            Monster Dojo, cada momento es una aventura deliciosa y divertida.
           </p>
         </div>
 
         <div class="about_column">
-          <img :src="logoMd" alt="" />
+          <img :src="logoMd" alt="Logo Monster Dojo" />
         </div>
       </div>
     </div>
@@ -160,10 +125,19 @@ onMounted(async () => {
         ></iframe>
 
         <div class="location-info">
-          <h2>Encuéntranos en el centro única sucursal de la ciudad de La Paz, Bolivia.</h2>
-          <p><span class="fa-solid fa-map-pin"></span> Pasaje Hermanos Manchego 2546 (Sopocachi), La Paz, Bolivia</p>
+          <h2>
+            Encuéntranos en el centro única sucursal de la ciudad de La Paz,
+            Bolivia.
+          </h2>
+          <p>
+            <span class="fa-solid fa-map-pin"></span>
+            Pasaje Hermanos Manchego 2546 (Sopocachi), La Paz, Bolivia
+          </p>
           <p><span class="fa-solid fa-mobile-button"></span> 69904327</p>
-          <p><span class="fa-solid fa-envelope"></span> kaijumonsterdojo@gmail.com</p>
+          <p>
+            <span class="fa-solid fa-envelope"></span>
+            kaijumonsterdojo@gmail.com
+          </p>
         </div>
       </div>
 

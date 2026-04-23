@@ -1,24 +1,26 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import '@/assets/css/food-panel.css'
 import '@/assets/css/popup_panel.css'
-import logo from '@/assets/images/logo.png'
+import StaffNavbar from '@/components/navigation/StaffNavbar.vue'
+import { usePermissions } from '@/composables/usePermissions'
 import { getOrders, updateOrder } from '@/services/orders.service'
 
 const router = useRouter()
-const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
-const userRole = storedUser?.rol_id_rol || ''
+const { hasPermission, hasRole } = usePermissions()
 
-const isMesero = computed(() => userRole === 'mesero')
-const isEncargadoLocal = computed(() => userRole === 'encargadoLocal')
+const canViewOrderDetails = computed(() => hasPermission('ver_pedidos_detalle'))
+const canManageOrders = computed(() => hasPermission('gestionar_pedidos'))
 
 const homeRoute = computed(() => {
-  if (isMesero.value) return '/panel-mesero'
-  return '/adminpanel'
+  if (hasRole('mesero')) return '/panel-mesero'
+  if (hasRole('encargadoLocal')) return '/adminpanel'
+  if (hasRole('encargadoSeguridad')) return '/panel-seguridad'
+  return '/login'
 })
-const menuOpen = ref(false)
+
 const selectedGroup = ref('todos')
 const searchQuery = ref('')
 const sortBy = ref('')
@@ -26,10 +28,6 @@ const sortOrder = ref('asc')
 const pedidos = ref([])
 const loading = ref(false)
 const errorMessage = ref('')
-
-const toggleMenu = () => {
-  menuOpen.value = !menuOpen.value
-}
 
 const normalizeEstado = (estado) => String(estado || '').trim().toLowerCase()
 
@@ -65,7 +63,9 @@ const filteredPedidos = computed(() => {
       const pedido = pedidoInfo.pedido
       return (
         String(pedido.id_pedido || '').toLowerCase().includes(query) ||
-        String(pedido.usuario_rel?.nombre || pedido.usuario?.nombre || '').toLowerCase().includes(query) ||
+        String(pedido.usuario_rel?.nombre || pedido.usuario?.nombre || '')
+          .toLowerCase()
+          .includes(query) ||
         String(pedido.fecha_hora || '').toLowerCase().includes(query) ||
         String(pedido.estado || '').toLowerCase().includes(query) ||
         String(pedidoInfo.total || '').toLowerCase().includes(query)
@@ -133,7 +133,7 @@ const loadOrders = async () => {
     errorMessage.value = ''
 
     const data = await getOrders()
-    pedidos.value = Array.isArray(data) ? data : (data?.items || data?.results || [])
+    pedidos.value = Array.isArray(data) ? data : data?.items || data?.results || []
   } catch (error) {
     errorMessage.value =
       error?.response?.data?.detail || 'No se pudieron cargar los pedidos.'
@@ -143,6 +143,8 @@ const loadOrders = async () => {
 }
 
 const cambiarEstadoPedido = (pedidoInfo, nuevoEstado) => {
+  if (!canManageOrders.value) return
+
   Swal.fire({
     title: '¿Está seguro?',
     text: '¿Está seguro de cambiar el estado del pedido?',
@@ -176,6 +178,8 @@ const cambiarEstadoPedido = (pedidoInfo, nuevoEstado) => {
 }
 
 const cancelarPedido = (pedidoInfo) => {
+  if (!canManageOrders.value) return
+
   Swal.fire({
     title: '¿Está seguro?',
     text: '¿Está seguro de cancelar el pedido?',
@@ -209,6 +213,7 @@ const cancelarPedido = (pedidoInfo) => {
 }
 
 const verDetalles = (idPedido) => {
+  if (!canViewOrderDetails.value) return
   router.push(`/verDetalle-pedido/${idPedido}`)
 }
 
@@ -228,30 +233,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <nav class="navbar">
-      <div class="nav-logo">
-        <img :src="logo" alt="Monster Dojo" />
-      </div>
-
-      <div class="nav-hamburger" @click="toggleMenu">
-        <i class="fa fa-bars"></i>
-      </div>
-
-<ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
-  <li><RouterLink :to="homeRoute">Inicio</RouterLink></li>
-  <li><RouterLink to="/game-menu">Juegos</RouterLink></li>
-  <li><RouterLink to="/food_panel">Comida</RouterLink></li>
-  <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
-
-  <li v-if="isEncargadoLocal"><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
-  <li v-if="isEncargadoLocal"><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
-  <li v-if="isEncargadoLocal">
-    <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
-  </li>
-
-  <li><RouterLink to="/logout"><i class="fa-solid fa-sign-out"></i></RouterLink></li>
-</ul>
-    </nav>
+    <StaffNavbar :homeRoute="homeRoute" profileRoute="/perfil_admin" />
 
     <div class="container">
       <div class="title">Panel de Pedidos</div>
@@ -331,13 +313,16 @@ onMounted(async () => {
 
             <tr v-for="pedidoInfo in filteredPedidos" :key="pedidoInfo.pedido.id_pedido">
               <td>{{ pedidoInfo.pedido.id_pedido }}</td>
-              <td>{{ pedidoInfo.pedido.usuario_rel?.nombre || pedidoInfo.pedido.usuario?.nombre || '-' }}</td>
+              <td>
+                {{ pedidoInfo.pedido.usuario_rel?.nombre || pedidoInfo.pedido.usuario?.nombre || '-' }}
+              </td>
               <td>{{ formatFechaHora(pedidoInfo.pedido.fecha_hora) }}</td>
               <td>{{ pedidoInfo.pedido.estado }}</td>
               <td>{{ formatMonto(pedidoInfo.total) }}</td>
               <td>
                 <div class="action-buttons">
                   <button
+                    v-if="canViewOrderDetails"
                     type="button"
                     class="verDetallesBtn"
                     @click="verDetalles(pedidoInfo.pedido.id_pedido)"
@@ -346,7 +331,7 @@ onMounted(async () => {
                   </button>
 
                   <button
-                    v-if="isEncargadoLocal && normalizeEstado(pedidoInfo.pedido.estado) === 'pendiente'"
+                    v-if="canManageOrders && normalizeEstado(pedidoInfo.pedido.estado) === 'pendiente'"
                     type="button"
                     class="cambiarEstadoBtn"
                     @click="cambiarEstadoPedido(pedidoInfo, 'En Progreso')"
@@ -355,7 +340,10 @@ onMounted(async () => {
                   </button>
 
                   <button
-                    v-else-if="isEncargadoLocal && normalizeEstado(pedidoInfo.pedido.estado) === 'en progreso'"
+                    v-else-if="
+                      canManageOrders &&
+                      normalizeEstado(pedidoInfo.pedido.estado) === 'en progreso'
+                    "
                     type="button"
                     class="cambiarEstadoBtn"
                     @click="cambiarEstadoPedido(pedidoInfo, 'Finalizado')"
@@ -365,7 +353,7 @@ onMounted(async () => {
 
                   <button
                     v-if="
-                      isEncargadoLocal &&
+                      canManageOrders &&
                       normalizeEstado(pedidoInfo.pedido.estado) !== 'finalizado' &&
                       normalizeEstado(pedidoInfo.pedido.estado) !== 'cancelado'
                     "
@@ -384,76 +372,77 @@ onMounted(async () => {
     </div>
   </div>
 </template>
-    <style>
-        .swal2-cancel {
-            background-color: #192847 !important;
-            color: #fff !important;
-        }
-        .swal2-confirm {
-            background-color: #d48600 !important;
-            color: #fff !important;
-            width: 120px !important; 
-        }
-        .container {
-            padding: 20px;
-        }
-        .title {
-            text-align: center;
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-        .group-by-container {
-            display: flex;
-            justify-content: flex-start;            
-            align-items: center;
-            margin-top: 10px;
-            gap: 5px; 
-        }
-        .group-by-container label {
-            font-size: 14px;
-        }
-        .group-by-container select {
-            font-size: 14px;
-            padding: 5px;
-            width: 150px;
-        }
-        .search-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 10px;
-            gap: 20px;
-        }
-        .table-responsive {
-            margin-top: 20px;
-        }
-        .table-summary {
-            margin-top: 20px;
-            text-align: right;
-            background-color: #f9bf03; 
-            padding: 15px;
-            border-radius: 10px;
-            width: 250px; 
-            margin-left: auto;
-        }
-        .table-summary p {
-            margin: 5px 0;
-        }
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-        .action-buttons button {
-            background-color: var(--alt-primary-color);
-            color: var(--light-color);
-            border: none;
-            padding: 10px;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-        .action-buttons button i {
-            pointer-events: none;
-        }
-    </style>
+
+<style>
+.swal2-cancel {
+  background-color: #192847 !important;
+  color: #fff !important;
+}
+.swal2-confirm {
+  background-color: #d48600 !important;
+  color: #fff !important;
+  width: 120px !important;
+}
+.container {
+  padding: 20px;
+}
+.title {
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+.group-by-container {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-top: 10px;
+  gap: 5px;
+}
+.group-by-container label {
+  font-size: 14px;
+}
+.group-by-container select {
+  font-size: 14px;
+  padding: 5px;
+  width: 150px;
+}
+.search-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  gap: 20px;
+}
+.table-responsive {
+  margin-top: 20px;
+}
+.table-summary {
+  margin-top: 20px;
+  text-align: right;
+  background-color: #f9bf03;
+  padding: 15px;
+  border-radius: 10px;
+  width: 250px;
+  margin-left: auto;
+}
+.table-summary p {
+  margin: 5px 0;
+}
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.action-buttons button {
+  background-color: var(--alt-primary-color);
+  color: var(--light-color);
+  border: none;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.action-buttons button i {
+  pointer-events: none;
+}
+</style>

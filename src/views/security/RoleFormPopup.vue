@@ -53,6 +53,7 @@ const roleForm = reactive({
     gestionarMesas: false,
 
     verReservas: false,
+    crearReservas: false,
     gestionarReservas: false,
   },
 })
@@ -95,6 +96,7 @@ const permissionMap = {
   ver_mesas: 'verMesas',
   gestionar_mesas: 'gestionarMesas',
   ver_reservas_detalle: 'verReservas',
+  crear_reservas: 'crearReservas',
   gestionar_reservas: 'gestionarReservas',
 }
 
@@ -132,6 +134,8 @@ watch(() => roleForm.accesos.gestionarMesas, (value) => {
 })
 watch(() => roleForm.accesos.gestionarReservas, (value) => {
   if (value) roleForm.accesos.verReservas = true
+             roleForm.accesos.crearReservas = true
+
 })
 
 const selectedAccesses = computed(() => {
@@ -153,6 +157,7 @@ const selectedAccesses = computed(() => {
   if (roleForm.accesos.gestionarMesas) labels.push('Gestión de mesas')
 
   if (roleForm.accesos.verReservas) labels.push('Ver reservas y detalles')
+  if (roleForm.accesos.crearReservas) labels.push('Crear reservas')
   if (roleForm.accesos.gestionarReservas) labels.push('Gestión de reservas')
 
   return labels
@@ -190,7 +195,8 @@ const summaryByModule = computed(() => {
     {
       title: 'Reservas',
       icon: CalendarCheck2,
-      value: a.gestionarReservas ? 'Gestión' : a.verReservas ? 'Ver' : 'Sin acceso',
+      value: a.gestionarReservas ? 'Gestión'  : a.crearReservas
+          ? 'Crear' : a.verReservas ? 'Ver' : 'Sin acceso',
     },
   ]
 })
@@ -224,7 +230,8 @@ const moduleIsActive = (type) => {
     return roleForm.accesos.verMesas || roleForm.accesos.gestionarMesas
   }
   if (type === 'reservas') {
-    return roleForm.accesos.verReservas || roleForm.accesos.gestionarReservas
+    return roleForm.accesos.verReservas ||     roleForm.accesos.crearReservas ||
+    roleForm.accesos.gestionarReservas
   }
   return false
 }
@@ -436,6 +443,8 @@ const saveRole = () => {
                 </div>
                 <p class="permission-description">Consulta y administración de reservas del sistema.</p>
                 <label><input v-model="roleForm.accesos.verReservas" type="checkbox" /> Ver reservas y detalles</label>
+                <label>
+                <input v-model="roleForm.accesos.crearReservas" type="checkbox" />Crear reservas</label>
                 <label><input v-model="roleForm.accesos.gestionarReservas" type="checkbox" /> Gestión de reservas</label>
               </div>
             </div>
