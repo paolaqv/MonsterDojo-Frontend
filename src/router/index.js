@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import Swal from 'sweetalert2'
 import { useAuthStore } from '@/stores/auth'
 import GameMenuView from '@/views/games/GameMenuView.vue'
 import AdminPanelView from '@/views/admin/AdminPanelView.vue'
@@ -288,11 +289,11 @@ const routes = [
   {
     path: '/logout',
     name: 'logout',
-beforeEnter: () => {
-  const authStore = useAuthStore()
-  authStore.clearSession()
-  return '/login'
-},
+    beforeEnter: () => {
+      const authStore = useAuthStore()
+      authStore.clearSession()
+      return '/login'
+    },
   },
 ]
 
@@ -336,8 +337,15 @@ router.beforeEach(async (to, from, next) => {
 
   if (to.meta.roles) {
     const hasAllowedRole = to.meta.roles.includes(authStore.role)
+
     if (!hasAllowedRole) {
-      next('/error')
+      await Swal.fire({
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para ingresar a esta sección.',
+        icon: 'warning',
+        confirmButtonText: 'OK',
+      })
+      next(authStore.getDefaultRouteByRole())
       return
     }
   }
@@ -348,7 +356,13 @@ router.beforeEach(async (to, from, next) => {
     )
 
     if (!hasAllPermissions) {
-      next('/error')
+      await Swal.fire({
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para ingresar a esta sección.',
+        icon: 'warning',
+        confirmButtonText: 'OK',
+      })
+      next(authStore.getDefaultRouteByRole())
       return
     }
   }

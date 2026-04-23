@@ -52,6 +52,16 @@ api.interceptors.response.use(
         window.location.href = '/login'
       }
     }
+    if (status === 403) {
+      await Swal.fire({
+        title: 'Acceso denegado',
+        text:
+          error?.response?.data?.detail ||
+          'No tienes permisos para realizar esta acción.',
+        icon: 'warning',
+        confirmButtonText: 'OK',
+      })
+    }
 
     return Promise.reject(error)
   }

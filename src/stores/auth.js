@@ -70,6 +70,21 @@ export const useAuthStore = defineStore('auth', {
       return this.role === roleName
     },
 
+    getDefaultRouteByRole() {
+      switch (this.role) {
+        case 'cliente':
+          return '/inicio_usuario'
+        case 'encargadoLocal':
+          return '/adminpanel'
+        case 'encargadoSeguridad':
+          return '/panel-seguridad'
+        case 'mesero':
+          return '/panel-mesero'
+        default:
+          return '/login'
+      }
+    },
+
     startAutoRefresh(intervalMs = 30000) {
       if (this.refreshIntervalId) return
 
