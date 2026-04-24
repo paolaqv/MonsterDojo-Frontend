@@ -42,7 +42,10 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       sessionStorage.removeItem('reset_correo')
-      sessionStorage.removeItem('reset_answer')
+      sessionStorage.removeItem('reset_codigo')
+sessionStorage.removeItem('reset_codigo_debug')
+sessionStorage.removeItem('password_change_correo')
+sessionStorage.removeItem('password_policy_cache')
       this.stopAutoRefresh()
     },
 
@@ -68,6 +71,21 @@ export const useAuthStore = defineStore('auth', {
 
     hasRole(roleName) {
       return this.role === roleName
+    },
+
+    getDefaultRouteByRole() {
+      switch (this.role) {
+        case 'cliente':
+          return '/inicio_usuario'
+        case 'encargadoLocal':
+          return '/adminpanel'
+        case 'encargadoSeguridad':
+          return '/panel-seguridad'
+        case 'mesero':
+          return '/panel-mesero'
+        default:
+          return '/login'
+      }
     },
 
     startAutoRefresh(intervalMs = 30000) {

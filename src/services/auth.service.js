@@ -19,6 +19,54 @@ export const register = async (payload) => {
   return data
 }
 
+// =========================================================
+// NUEVO: cambio obligatorio
+// =========================================================
+export const changePasswordRequired = async ({
+  correo,
+  current_password,
+  new_password,
+}) => {
+  const { data } = await api.post('/auth/change-password-required', {
+    correo,
+    current_password,
+    new_password,
+  })
+  return data
+}
+
+// =========================================================
+// NUEVO: recuperación segura por código
+// =========================================================
+export const requestPasswordRecovery = async ({ correo }) => {
+  const { data } = await api.post('/auth/password-recovery/request', { correo })
+  return data
+}
+
+export const verifyRecoveryCode = async ({ correo, codigo }) => {
+  const { data } = await api.post('/auth/password-recovery/verify', {
+    correo,
+    codigo,
+  })
+  return data
+}
+
+export const resetPasswordWithCode = async ({
+  correo,
+  codigo,
+  new_password,
+}) => {
+  const { data } = await api.post('/auth/password-recovery/reset', {
+    correo,
+    codigo,
+    new_password,
+  })
+  return data
+}
+
+// =========================================================
+// LEGACY: se mantiene por compatibilidad temporal
+// =========================================================
 export const getSecurityQuestion = async (correo) => {
   const { data } = await api.post('/auth/security-question', { correo })
   return data
@@ -64,7 +112,8 @@ export const logout = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
   sessionStorage.removeItem('reset_correo')
-  sessionStorage.removeItem('reset_answer')
+  sessionStorage.removeItem('reset_codigo')
+  sessionStorage.removeItem('password_policy_cache')
 }
 
 export const getStoredUser = () => {
