@@ -38,6 +38,7 @@ import SecurityPanelView from '@/views/security/SecurityPanelView.vue'
 import WaiterPanelView from '@/views/mesero/WaiterPanelView.vue'
 import GamePanelView from '@/views/games/GamePanelView.vue'
 import ReservationsAdminPanelView from '@/views/reservations/ReservationsAdminPanelView.vue'
+import AuditPanelView from "@/views/security/AuditPanelView.vue"
 import PasswordPolicyView from '@/views/security/PasswordPolicyView.vue'
 import ChangeRequiredPasswordView from '@/views/auth/ChangeRequiredPasswordView.vue'
 const routes = [
@@ -93,6 +94,12 @@ const routes = [
     component: SecurityPanelView,
     meta: { roles: ['encargadoSeguridad'] },
   },
+  {
+ path:"/security/auditoria",
+ name:"auditPanel",
+ component:AuditPanelView,
+ meta: { roles: ['encargadoSeguridad'] },
+},
   {
     path: '/panel-mesero',
     name: 'panel-mesero',

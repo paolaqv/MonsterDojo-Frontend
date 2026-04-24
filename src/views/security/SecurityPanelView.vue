@@ -1,6 +1,10 @@
 <template>
   <div>
-    <StaffNavbar homeRoute="/panel-seguridad" profileRoute="/perfil_admin" />
+
+    <StaffNavbar
+      homeRoute="/panel-seguridad"
+      profileRoute="/perfil_admin"
+    />
 
     <div class="security-page-shell">
       <StaffOptionsPanel profileRoute="/perfil_admin" />
@@ -14,15 +18,42 @@
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
 <script setup>
+import '@/assets/css/adminpanel.css'
+
 import StaffNavbar from '@/components/navigation/StaffNavbar.vue'
 import StaffOptionsPanel from '@/components/navigation/StaffOptionsPanel.vue'
 </script>
 
 <style scoped>
+
+.audit-access{
+margin-top:30px;
+display:flex;
+justify-content:center;
+}
+
+.audit-button{
+
+padding:14px 30px;
+
+text-decoration:none;
+
+border-radius:10px;
+
+font-weight:bold;
+
+transition:.3s;
+}
+
+.audit-button:hover{
+transform:scale(1.03);
+}
+
 .security-page-shell {
   padding: 170px 24px 24px;
 }
