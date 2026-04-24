@@ -25,13 +25,15 @@ api.interceptors.response.use(
     const requestUrl = error?.config?.url || ''
 
     const isAuthRoute =
-      requestUrl.includes('/auth/login') ||
-      requestUrl.includes('/auth/register') ||
-      requestUrl.includes('/auth/security-question') ||
-      requestUrl.includes('/auth/verify-security-answer') ||
-      requestUrl.includes('/auth/reset-password') ||
-      requestUrl.includes('/auth/security-question')
-
+  requestUrl.includes('/auth/login') ||
+  requestUrl.includes('/auth/register') ||
+  requestUrl.includes('/auth/security-question') ||
+  requestUrl.includes('/auth/verify-security-answer') ||
+  requestUrl.includes('/auth/reset-password') ||
+  requestUrl.includes('/auth/change-password-required') ||
+  requestUrl.includes('/auth/password-recovery/request') ||
+  requestUrl.includes('/auth/password-recovery/verify') ||
+  requestUrl.includes('/auth/password-recovery/reset')
     if (status === 401 && !isAuthRoute) {
       const alreadyRedirecting = sessionStorage.getItem('session_expired_shown')
 
@@ -51,6 +53,16 @@ api.interceptors.response.use(
         sessionStorage.removeItem('session_expired_shown')
         window.location.href = '/login'
       }
+    }
+    if (status === 403) {
+      await Swal.fire({
+        title: 'Acceso denegado',
+        text:
+          error?.response?.data?.detail ||
+          'No tienes permisos para realizar esta acción.',
+        icon: 'warning',
+        confirmButtonText: 'OK',
+      })
     }
 
     return Promise.reject(error)

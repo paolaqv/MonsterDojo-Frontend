@@ -5,28 +5,30 @@ import '@/assets/css/userforms.css'
 import logo from '@/assets/images/logo.png'
 import { login } from '@/services/auth.service'
 import { useAuthStore } from '@/stores/auth'
+
 const router = useRouter()
 const authStore = useAuthStore()
+
 const menuOpen = ref(false)
 const correo = ref('')
 const password = ref('')
-const loginAttempts = ref(0)
 const errorMessage = ref('')
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
 }
+
 const handleLogin = async () => {
   try {
     errorMessage.value = ''
-    loginAttempts.value = 0
 
     const result = await login({
       correo: correo.value,
       password: password.value,
     })
-      authStore.setSession(result)
-      authStore.startAutoRefresh()
+
+    authStore.setSession(result)
+    authStore.startAutoRefresh()
 
     const role = result?.user?.rol_id_rol || result?.user?.rol || ''
 
@@ -47,15 +49,25 @@ const handleLogin = async () => {
 
     router.push('/inicio_usuario')
   } catch (error) {
-    loginAttempts.value += 1
-    errorMessage.value =
+    const detail =
       error?.response?.data?.detail || 'Correo electrónico o contraseña incorrectos.'
+
+    if (
+      detail.includes('Debes cambiar tu contraseña') ||
+      detail.includes('Tu contraseña ha expirado')
+    ) {
+      sessionStorage.setItem('password_change_correo', correo.value.trim())
+      router.push('/change-required-password')
+      return
+    }
+
+    errorMessage.value = detail
   }
 }
 </script>
 
 <template>
-  <div class = "login-page">
+  <div class="login-page">
     <nav class="navbar">
       <div class="nav-logo">
         <img :src="logo" alt="Monster Dojo" />
@@ -85,8 +97,8 @@ const handleLogin = async () => {
             <label for="password">Contraseña</label>
             <input id="password" v-model="password" type="password" name="password" required />
 
-            <div v-if="loginAttempts > 0" class="error-message">
-              {{ errorMessage || 'Correo electrónico o contraseña incorrectos.' }}
+            <div v-if="errorMessage" class="error-message">
+              {{ errorMessage }}
             </div>
 
             <span>
@@ -103,36 +115,18 @@ const handleLogin = async () => {
             </span>
           </div>
 
-          <div class="input-container">
-            <!-- <a href="/login/google" class="google-btn">Iniciar sesión con Google</a> -->
-          </div>
+          <div class="input-container"></div>
         </form>
       </div>
     </div>
   </div>
 </template>
 
-<style>
+<style scoped>
 .error-message {
   color: red;
   font-size: 0.8em;
   visibility: visible;
   height: auto;
-}
-
-.google-btn {
-  display: inline-block;
-  background-color: #db4437;
-  color: white;
-  border-radius: 4px;
-  padding: 10px 15px;
-  margin-top: 10px;
-  text-align: center;
-  text-decoration: none;
-  font-weight: bold;
-}
-
-.google-btn:hover {
-  background-color: #c23321;
 }
 </style>

@@ -87,13 +87,12 @@ body {
 }
 
 .container {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    padding: 30px;
-    background-color: var(--secondary-color);
-    margin-top: 100px; /* Ajuste para el navbar fijo */
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  width: 100%;
+  padding: 24px;
+  box-sizing: border-box;
 }
 
 .options-panel {
@@ -104,6 +103,7 @@ body {
     justify-content: center;
     width: 100%;
     height: 100%;
+    margin-top: 30px;
 }
 
 .option {
