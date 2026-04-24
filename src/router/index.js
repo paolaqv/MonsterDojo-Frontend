@@ -38,7 +38,8 @@ import SecurityPanelView from '@/views/security/SecurityPanelView.vue'
 import WaiterPanelView from '@/views/mesero/WaiterPanelView.vue'
 import GamePanelView from '@/views/games/GamePanelView.vue'
 import ReservationsAdminPanelView from '@/views/reservations/ReservationsAdminPanelView.vue'
-
+import PasswordPolicyView from '@/views/security/PasswordPolicyView.vue'
+import ChangeRequiredPasswordView from '@/views/auth/ChangeRequiredPasswordView.vue'
 const routes = [
   {
     path: '/',
@@ -119,6 +120,18 @@ const routes = [
     name: 'userspanel',
     component: UsersPanelView,
     meta: { permissions: ['ver_usuarios'] },
+  },
+
+    {
+    path: '/politicas-contrasena',
+    name: 'politicas-contrasena',
+    component: PasswordPolicyView,
+    meta: { roles: ['encargadoSeguridad'] },
+  },
+  {
+    path: '/change-required-password',
+    name: 'change-required-password',
+    component: ChangeRequiredPasswordView,
   },
 
   // --------- operación ----------
@@ -279,7 +292,6 @@ const routes = [
     name: 'verify_security_question',
     component: VerifySecurityQuestionView,
   },
-
   // --------- misc ----------
   {
     path: '/carrito',

@@ -42,7 +42,10 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       sessionStorage.removeItem('reset_correo')
-      sessionStorage.removeItem('reset_answer')
+      sessionStorage.removeItem('reset_codigo')
+sessionStorage.removeItem('reset_codigo_debug')
+sessionStorage.removeItem('password_change_correo')
+sessionStorage.removeItem('password_policy_cache')
       this.stopAutoRefresh()
     },
 

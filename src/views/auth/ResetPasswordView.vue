@@ -3,13 +3,14 @@ import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import '@/assets/css/userforms.css'
 import logo from '@/assets/images/logo.png'
-import { getSecurityQuestion } from '@/services/auth.service'
+import { requestPasswordRecovery } from '@/services/auth.service'
 
 const router = useRouter()
 
 const menuOpen = ref(false)
 const email = ref('')
 const errorMessage = ref('')
+const successMessage = ref('')
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
@@ -18,15 +19,28 @@ const toggleMenu = () => {
 const handleResetPassword = async () => {
   try {
     errorMessage.value = ''
+    successMessage.value = ''
 
-    const data = await getSecurityQuestion(email.value.trim())
+    const data = await requestPasswordRecovery({
+      correo: email.value.trim(),
+    })
 
-    sessionStorage.setItem('reset_correo', data.correo)
+    sessionStorage.setItem('reset_correo', email.value.trim())
 
-    router.push('/verify_security_question')
+    if (data?.debug_code) {
+      sessionStorage.setItem('reset_codigo_debug', data.debug_code)
+    } else {
+      sessionStorage.removeItem('reset_codigo_debug')
+    }
+
+    successMessage.value = 'Se envió un código de recuperación si el correo existe.'
+
+    setTimeout(() => {
+      router.push('/verify_security_question')
+    }, 900)
   } catch (error) {
     errorMessage.value =
-      error?.response?.data?.detail || 'No se pudo recuperar la pregunta de seguridad.'
+      error?.response?.data?.detail || 'No se pudo iniciar la recuperación.'
   }
 }
 </script>
@@ -44,16 +58,16 @@ const handleResetPassword = async () => {
 
       <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
         <li><RouterLink to="/">Inicio</RouterLink></li>
-        <li><RouterLink to="/login">Iniciar Sesion</RouterLink></li>
+        <li><RouterLink to="/login">Iniciar Sesión</RouterLink></li>
       </ul>
     </nav>
 
     <div class="container">
       <div class="form-container">
-        <h3>Recuperar Contraseña</h3>
+        <h3>Recuperar contraseña</h3>
 
         <form @submit.prevent="handleResetPassword">
-          <p>Ingresa tu correo electrónico</p>
+          <p>Ingresa tu correo electrónico para recibir un código temporal.</p>
 
           <div class="input-container">
             <label for="email">Correo Electrónico</label>
@@ -64,8 +78,12 @@ const handleResetPassword = async () => {
             {{ errorMessage }}
           </div>
 
+          <div v-if="successMessage" class="success-message">
+            {{ successMessage }}
+          </div>
+
           <div class="input-container">
-            <button type="submit">Recuperar Contraseña</button>
+            <button type="submit">Enviar código</button>
           </div>
         </form>
       </div>
@@ -73,12 +91,16 @@ const handleResetPassword = async () => {
   </div>
 </template>
 
-<style>
+<style scoped>
 .error-message {
   color: red;
   font-size: 0.8em;
-  visibility: visible;
-  height: auto;
+  margin-top: 8px;
+}
+
+.success-message {
+  color: green;
+  font-size: 0.8em;
   margin-top: 8px;
 }
 </style>
