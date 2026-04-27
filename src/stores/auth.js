@@ -88,7 +88,7 @@ sessionStorage.removeItem('password_policy_cache')
       }
     },
 
-    startAutoRefresh(intervalMs = 30000) {
+    startAutoRefresh(intervalMs = 5 * 60 * 1000) {
       if (this.refreshIntervalId) return
 
       this.refreshIntervalId = window.setInterval(async () => {

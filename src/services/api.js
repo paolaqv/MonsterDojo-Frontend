@@ -34,26 +34,34 @@ api.interceptors.response.use(
   requestUrl.includes('/auth/password-recovery/request') ||
   requestUrl.includes('/auth/password-recovery/verify') ||
   requestUrl.includes('/auth/password-recovery/reset')
-    if (status === 401 && !isAuthRoute) {
-      const alreadyRedirecting = sessionStorage.getItem('session_expired_shown')
+const detail = error?.response?.data?.detail || ''
 
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+const isRealSessionProblem =
+  detail.includes('No se pudo validar la credencial') ||
+  detail.includes('Could not validate credentials') ||
+  detail.includes('Token expirado') ||
+  detail.includes('token expired')
 
-      if (!alreadyRedirecting) {
-        sessionStorage.setItem('session_expired_shown', 'true')
+if (status === 401 && !isAuthRoute && isRealSessionProblem) {
+  const alreadyRedirecting = sessionStorage.getItem('session_expired_shown')
 
-        await Swal.fire({
-          title: 'Sesión expirada',
-          text: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
-          icon: 'warning',
-          confirmButtonText: 'OK',
-        })
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
 
-        sessionStorage.removeItem('session_expired_shown')
-        window.location.href = '/login'
-      }
-    }
+  if (!alreadyRedirecting) {
+    sessionStorage.setItem('session_expired_shown', 'true')
+
+    await Swal.fire({
+      title: 'Sesión expirada',
+      text: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
+      icon: 'warning',
+      confirmButtonText: 'OK',
+    })
+
+    sessionStorage.removeItem('session_expired_shown')
+    window.location.href = '/login'
+  }
+}
     if (status === 403) {
       await Swal.fire({
         title: 'Acceso denegado',
