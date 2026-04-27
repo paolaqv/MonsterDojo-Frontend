@@ -339,7 +339,7 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  if (!authStore.user) {
+  if (!authStore.user || (needsPermissions && !authStore.permissions.length)) {
     try {
       await authStore.refreshCurrentUser()
     } catch (error) {
