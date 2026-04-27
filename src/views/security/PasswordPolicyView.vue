@@ -83,8 +83,8 @@ const summaryCards = computed(() => [
     icon: Clock3,
   },
   {
-    title: 'No reutilización',
-    value: `${policy.periodo_no_reutilizacion_meses} meses`,
+    title: 'Máximo de cambios en vigencia',
+    value: `${policy.periodo_no_reutilizacion_meses}`,
     icon: RefreshCcw,
   },
   {
@@ -98,7 +98,7 @@ const selectedRules = computed(() => {
   const rules = [
     `Longitud mínima: ${policy.longitud_minima}`,
     `Expiración: ${policy.dias_expiracion} días`,
-    `No reutilización: ${policy.periodo_no_reutilizacion_meses} meses`,
+    `Máximo de cambios en vigencia: ${policy.periodo_no_reutilizacion_meses}`,
     `Intentos máximos: ${policy.max_intentos_login}`,
   ]
 
@@ -181,7 +181,7 @@ const selectStep = (step) => {
 
 const nextStep = () => {
   if (!canGoNext.value) return
-  if (currentStep.value < 3) currentStep.value++
+  if (currentStep.value < 2) currentStep.value++
 }
 
 const prevStep = () => {
@@ -355,7 +355,7 @@ onMounted(loadPolicy)
                     <TimerReset :size="18" />
                     <h4>No reutilización</h4>
                   </div>
-                  <p>Periodo en meses para impedir reutilización de contraseñas.</p>
+                  <p>Máximo de cambios de contraseña dentro de la vigencia</p>
                   <input
                     v-model="policy.periodo_no_reutilizacion_meses"
                     type="number"
@@ -448,7 +448,6 @@ onMounted(loadPolicy)
             <div v-if="errorMessage" class="error-message">
               {{ errorMessage }}
             </div>
-
             <div v-if="editing" class="policy-actions">
               <button
                 v-if="currentStep.value > 0"
@@ -461,7 +460,7 @@ onMounted(loadPolicy)
               </button>
 
               <button
-                v-if="currentStep.value < 3"
+                v-if="currentStep.value < 2"
                 v-wave
                 type="button"
                 class="primary-btn"
@@ -483,40 +482,39 @@ onMounted(loadPolicy)
               </button>
             </div>
           </div>
-
-          <div class="password-policy-summary">
-            <div class="preview-card">
-              <div class="preview-top">
-                <div>
-                  <h3>Estado de política</h3>
-                  <p><strong>Modo:</strong> {{ editing ? 'Edición' : 'Visualización' }}</p>
+            <div class="password-policy-summary">
+              <div class="preview-card">
+                <div class="preview-top">
+                  <div>
+                    <h3>Estado de política</h3>
+                    <p><strong>Modo:</strong> {{ editing ? 'Edición' : 'Visualización' }}</p>
+                  </div>
+                  <Sparkles :size="22" />
                 </div>
-                <Sparkles :size="22" />
+
+                <div class="preview-metrics">
+                  <div class="preview-metric">
+                    <span>Reglas activas</span>
+                    <strong>{{ selectedComplexities.length }}</strong>
+                  </div>
+                  <div class="preview-metric">
+                    <span>Intentos máx.</span>
+                    <strong>{{ policy.max_intentos_login }}</strong>
+                  </div>
+                </div>
               </div>
 
-              <div class="preview-metrics">
-                <div class="preview-metric">
-                  <span>Reglas activas</span>
-                  <strong>{{ selectedComplexities.length }}</strong>
-                </div>
-                <div class="preview-metric">
-                  <span>Intentos máx.</span>
-                  <strong>{{ policy.max_intentos_login }}</strong>
-                </div>
+              <div class="summary-chips">
+                <span
+                  v-for="rule in selectedRules"
+                  :key="rule"
+                  class="summary-chip"
+                >
+                  <CheckCircle2 :size="14" />
+                  {{ rule }}
+                </span>
               </div>
             </div>
-
-            <div class="summary-chips">
-              <span
-                v-for="rule in selectedRules"
-                :key="rule"
-                class="summary-chip"
-              >
-                <CheckCircle2 :size="14" />
-                {{ rule }}
-              </span>
-            </div>
-          </div>
         </div>
       </div>
     </div>
