@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import '@/assets/css/userforms.css'
 import { changePasswordRequired } from '@/services/auth.service'
-import { getPasswordPolicy } from '@/services/passwordPolicy.service'
+import { getPublicPasswordPolicy } from '@/services/passwordPolicy.service'
 
 const router = useRouter()
 
@@ -37,10 +37,10 @@ const checks = computed(() => {
 
 const loadPolicy = async () => {
   try {
-    const data = await getPasswordPolicy()
+    const data = await getPublicPasswordPolicy()
     policy.value = data
   } catch {
-    // dejamos defaults seguros
+    // fallback
   }
 }
 
@@ -102,18 +102,18 @@ onMounted(async () => {
         <p>Debes actualizar tu contraseña para continuar usando el sistema.</p>
 
         <div class="input-container">
-          <label for="currentPassword">Contraseña actual</label>
-          <input id="currentPassword" v-model="currentPassword" type="password" required />
+          <label>Contraseña actual</label>
+          <input v-model="currentPassword" type="password" required />
         </div>
 
         <div class="input-container">
-          <label for="newPassword">Nueva contraseña</label>
-          <input id="newPassword" v-model="newPassword" type="password" required />
+          <label>Nueva contraseña</label>
+          <input v-model="newPassword" type="password" required />
         </div>
 
         <div class="input-container">
-          <label for="confirmPassword">Confirmar nueva contraseña</label>
-          <input id="confirmPassword" v-model="confirmPassword" type="password" required />
+          <label>Confirmar nueva contraseña</label>
+          <input v-model="confirmPassword" type="password" required />
         </div>
 
         <div class="password-checklist">

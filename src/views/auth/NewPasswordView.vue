@@ -3,8 +3,8 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import '@/assets/css/userforms.css'
 import logo from '@/assets/images/logo.png'
-import { getPasswordPolicy } from '@/services/passwordPolicy.service'
 import { resetPasswordWithCode } from '@/services/auth.service'
+import { getPublicPasswordPolicy } from '@/services/passwordPolicy.service'
 
 const router = useRouter()
 
@@ -40,10 +40,10 @@ const checks = computed(() => {
 
 const loadPolicy = async () => {
   try {
-    const data = await getPasswordPolicy()
+    const data = await getPublicPasswordPolicy()
     policy.value = data
   } catch {
-    // dejamos valores por defecto
+    // fallback
   }
 }
 
@@ -108,29 +108,17 @@ onMounted(loadPolicy)
 
     <div class="container">
       <div class="form-container">
-        <form id="change-password-form" @submit.prevent="handleSaveChanges">
+        <form @submit.prevent="handleSaveChanges">
           <h3>Nueva contraseña</h3>
 
           <div class="input-container">
-            <label for="new-password">Nueva contraseña</label>
-            <input
-              id="new-password"
-              v-model="newPassword"
-              type="password"
-              name="new-password"
-              required
-            />
+            <label>Nueva contraseña</label>
+            <input v-model="newPassword" type="password" required />
           </div>
 
           <div class="input-container">
-            <label for="confirm-password">Confirmar contraseña</label>
-            <input
-              id="confirm-password"
-              v-model="confirmPassword"
-              type="password"
-              name="confirm-password"
-              required
-            />
+            <label>Confirmar contraseña</label>
+            <input v-model="confirmPassword" type="password" required />
           </div>
 
           <div class="password-checklist">
@@ -153,7 +141,7 @@ onMounted(loadPolicy)
           </div>
 
           <div class="input-container">
-            <button type="submit">Guardar Cambios</button>
+            <button type="submit">Guardar cambios</button>
           </div>
         </form>
       </div>

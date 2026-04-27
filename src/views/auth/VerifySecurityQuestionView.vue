@@ -26,10 +26,10 @@ const handleVerify = async () => {
 
     await verifyRecoveryCode({
       correo: correo.value,
-      codigo: codigo.value,
+      codigo: codigo.value.trim(),
     })
 
-    sessionStorage.setItem('reset_codigo', codigo.value)
+    sessionStorage.setItem('reset_codigo', codigo.value.trim())
     router.push('/new_password')
   } catch (error) {
     errorMessage.value =
@@ -47,10 +47,6 @@ const handleVerify = async () => {
         <div class="input-container">
           <label for="codigo">Código temporal</label>
           <input id="codigo" v-model="codigo" type="text" maxlength="6" required />
-        </div>
-
-        <div v-if="debugCode" class="debug-box">
-          Código de prueba: <strong>{{ debugCode }}</strong>
         </div>
 
         <div v-if="errorMessage" class="error-message">
@@ -76,7 +72,7 @@ const handleVerify = async () => {
   margin-top: 10px;
   padding: 10px 12px;
   background: #fff7d6;
-  border: 1px solid #f0d879;
+  border: 1pfx solid #f0d879;
   border-radius: 10px;
   font-size: 0.85em;
 }
