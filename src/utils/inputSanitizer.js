@@ -16,7 +16,7 @@ export const sanitizeTextInput = (value) => {
 
   return value
     .replace(HTML_OR_SCRIPT_PATTERN, '')
-    .replace(/[<>]/g, '')
+    
     .trim()
 }
 
