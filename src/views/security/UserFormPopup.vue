@@ -9,6 +9,7 @@ import {
   X,
   CheckCircle2,
   Sparkles,
+  BadgeInfo,
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -37,23 +38,49 @@ const currentStep = reactive({ value: 0 })
 const userForm = reactive({
   id: '',
   nombre: '',
+  primer_apellido: '',
+  segundo_apellido: '',
   correo: '',
   telefono: '',
   password: '',
-  pregunta_seguridad: 'temporal',
-  respuesta_seguridad: 'temporal',
   rol_id_rol: '',
   enviarCredenciales: true,
 })
 
+const sanitize = (value) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .trim()
+
+const buildPreviewEmail = () => {
+  const name = sanitize(userForm.nombre).split(' ')[0]
+  const firstSurname = sanitize(userForm.primer_apellido).split(' ')[0]
+  const secondSurname = sanitize(userForm.segundo_apellido).split(' ')[0]
+
+  if (!name || !firstSurname) return ''
+
+  let email = `${name[0]}${firstSurname}.monsterdojo@gmail.com`
+
+  if (secondSurname) {
+    email = `${name[0]}${firstSurname}.${secondSurname[0]}.monsterdojo@gmail.com`
+  }
+
+  return email
+}
+
+const generatedEmailPreview = computed(() => buildPreviewEmail())
+
 const resetForm = () => {
   userForm.id = ''
   userForm.nombre = ''
+  userForm.primer_apellido = ''
+  userForm.segundo_apellido = ''
   userForm.correo = ''
   userForm.telefono = ''
   userForm.password = ''
-  userForm.pregunta_seguridad = 'temporal'
-  userForm.respuesta_seguridad = 'temporal'
   userForm.rol_id_rol = ''
   userForm.enviarCredenciales = true
   currentStep.value = 0
@@ -67,12 +94,11 @@ const applyUserData = () => {
 
   userForm.id = props.userData.id_usuario || ''
   userForm.nombre = props.userData.nombre || ''
+  userForm.primer_apellido = props.userData.primer_apellido || ''
+  userForm.segundo_apellido = props.userData.segundo_apellido || ''
   userForm.correo = props.userData.correo || ''
   userForm.telefono = props.userData.telefono ?? ''
   userForm.password = ''
-  userForm.pregunta_seguridad =
-  userForm.pregunta_seguridad = 'temporal'
-  userForm.respuesta_seguridad = 'temporal'
   userForm.rol_id_rol = props.userData.rol_id_rol || ''
   userForm.enviarCredenciales = true
   currentStep.value = 0
@@ -98,11 +124,15 @@ const selectedRoleName = computed(() => {
   return role?.nombre || 'Sin rol'
 })
 
+const effectiveEmail = computed(() => {
+  return props.isEditing ? userForm.correo || generatedEmailPreview.value : generatedEmailPreview.value
+})
+
 const canGoNext = computed(() => {
   if (currentStep.value === 0) {
     return (
       userForm.nombre.trim() !== '' &&
-      userForm.correo.trim() !== '' &&
+      userForm.primer_apellido.trim() !== '' &&
       String(userForm.telefono).trim() !== ''
     )
   }
@@ -112,10 +142,7 @@ const canGoNext = computed(() => {
       return userForm.rol_id_rol.trim() !== ''
     }
 
-    return (
-      userForm.rol_id_rol.trim() !== '' &&
-      userForm.password.trim() !== ''
-    )
+    return userForm.rol_id_rol.trim() !== '' && userForm.password.trim() !== ''
   }
 
   return true
@@ -155,7 +182,7 @@ const saveUser = () => {
           </div>
           <div>
             <h2>{{ isEditing ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
-            <p>Completa datos, credenciales y rol del usuario.</p>
+            <p>Completa los datos del usuario y asigna su rol.</p>
           </div>
         </div>
 
@@ -186,17 +213,28 @@ const saveUser = () => {
           <div v-show="currentStep.value === 0" class="role-step-panel">
             <div class="form-group">
               <label>Nombre</label>
-              <input v-model="userForm.nombre" type="text" placeholder="Nombre completo" />
+              <input v-model="userForm.nombre" type="text" placeholder="Nombre" />
             </div>
 
             <div class="form-group">
-              <label>Correo</label>
-              <input v-model="userForm.correo" type="email" placeholder="correo@ejemplo.com" />
+              <label>Primer apellido</label>
+              <input v-model="userForm.primer_apellido" type="text" placeholder="Primer apellido" />
+            </div>
+
+            <div class="form-group">
+              <label>Segundo apellido</label>
+              <input v-model="userForm.segundo_apellido" type="text" placeholder="Segundo apellido" />
             </div>
 
             <div class="form-group">
               <label>Teléfono</label>
               <input v-model="userForm.telefono" type="text" placeholder="70000000" />
+            </div>
+
+            <div class="form-group">
+              <label>Correo de autenticación</label>
+              <input :value="effectiveEmail" type="text" readonly />
+              <small v-if="!isEditing">Se generará automáticamente y el backend resolverá duplicados si ya existe.</small>
             </div>
           </div>
 
@@ -211,12 +249,10 @@ const saveUser = () => {
               </select>
             </div>
 
-            <template v-if="!isEditing">
-              <div class="form-group">
-                <label>Contraseña temporal</label>
-                <input v-model="userForm.password" type="text" placeholder="Contraseña inicial" />
-              </div>
-            </template>
+            <div v-if="!isEditing" class="form-group">
+              <label>Contraseña temporal</label>
+              <input v-model="userForm.password" type="text" placeholder="Temp1234!" />
+            </div>
 
             <label class="checkbox-row">
               <input v-model="userForm.enviarCredenciales" type="checkbox" />
@@ -236,10 +272,18 @@ const saveUser = () => {
 
               <div class="summary-item enhanced-summary-item">
                 <div class="summary-item-left">
+                  <BadgeInfo :size="18" />
+                  <span>Apellidos</span>
+                </div>
+                <strong>{{ userForm.primer_apellido }} {{ userForm.segundo_apellido || '' }}</strong>
+              </div>
+
+              <div class="summary-item enhanced-summary-item">
+                <div class="summary-item-left">
                   <Mail :size="18" />
                   <span>Correo</span>
                 </div>
-                <strong>{{ userForm.correo || '-' }}</strong>
+                <strong>{{ effectiveEmail || '-' }}</strong>
               </div>
 
               <div class="summary-item enhanced-summary-item">
@@ -285,8 +329,8 @@ const saveUser = () => {
                 <strong>{{ isEditing ? 'Edición' : 'Registro' }}</strong>
               </div>
               <div class="preview-metric">
-                <span>Envío correo</span>
-                <strong>{{ userForm.enviarCredenciales ? 'Sí' : 'No' }}</strong>
+                <span>Correo</span>
+                <strong>{{ effectiveEmail ? 'Generado' : 'Pendiente' }}</strong>
               </div>
             </div>
           </div>
@@ -294,11 +338,11 @@ const saveUser = () => {
           <div class="summary-chips">
             <span class="summary-chip">
               <CheckCircle2 :size="14" />
-              {{ userForm.correo || 'Correo pendiente' }}
+              {{ selectedRoleName }}
             </span>
             <span class="summary-chip">
               <CheckCircle2 :size="14" />
-              {{ selectedRoleName }}
+              {{ effectiveEmail || 'Correo pendiente' }}
             </span>
           </div>
         </div>

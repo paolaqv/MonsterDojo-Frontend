@@ -22,10 +22,10 @@ const handleResetPassword = async () => {
     successMessage.value = ''
 
     const data = await requestPasswordRecovery({
-      correo: email.value.trim(),
+      correo: email.value.trim().toLowerCase(),
     })
 
-    sessionStorage.setItem('reset_correo', email.value.trim())
+    sessionStorage.setItem('reset_correo', email.value.trim().toLowerCase())
 
     if (data?.debug_code) {
       sessionStorage.setItem('reset_codigo_debug', data.debug_code)
@@ -33,7 +33,7 @@ const handleResetPassword = async () => {
       sessionStorage.removeItem('reset_codigo_debug')
     }
 
-    successMessage.value = 'Se envió un código de recuperación si el correo existe.'
+    successMessage.value = data?.message || 'Se envió un código al correo registrado.'
 
     setTimeout(() => {
       router.push('/verify_security_question')
@@ -67,11 +67,11 @@ const handleResetPassword = async () => {
         <h3>Recuperar contraseña</h3>
 
         <form @submit.prevent="handleResetPassword">
-          <p>Ingresa tu correo electrónico para recibir un código temporal.</p>
+          <p>Ingresa el correo con el que te registraste en el sistema.</p>
 
           <div class="input-container">
-            <label for="email">Correo Electrónico</label>
-            <input id="email" v-model="email" type="email" name="email" required />
+            <label for="email">Correo electrónico</label>
+            <input id="email" v-model="email" type="email" required />
           </div>
 
           <div v-if="errorMessage" class="error-message">

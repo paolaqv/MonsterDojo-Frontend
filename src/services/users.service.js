@@ -20,6 +20,11 @@ export const getSecurityUserById = async (userId) => {
   return data
 }
 
+export const createSecurityUser = async (payload) => {
+  const { data } = await api.post('/security/users/', payload)
+  return data
+}
+
 export const updateSecurityUser = async (userId, payload) => {
   const { data } = await api.put(`/security/users/${userId}`, payload)
   return data
@@ -29,10 +34,7 @@ export const deleteSecurityUser = async (userId) => {
   const { data } = await api.delete(`/security/users/${userId}`)
   return data
 }
-export const createSecurityUser = async (payload) => {
-  const { data } = await api.post('/security/users/', payload)
-  return data
-}
+
 export const updateSecurityUserRole = async (userId, payload) => {
   const { data } = await api.put(`/security/users/${userId}/role`, payload)
   return data
@@ -48,7 +50,6 @@ export const unlockSecurityUser = async (userId) => {
   return data
 }
 
-/* placeholder visual por ahora */
 export const sendUserCredentials = async (userId) => {
   const { data } = await api.post(`/security/users/${userId}/send-credentials`)
   return data
