@@ -1,7 +1,7 @@
 import api from './api'
 
 export const getRoles = async () => {
-  const { data } = await api.get('/roles')
+  const { data } = await api.get('/roles/')
   return data
 }
 
@@ -16,7 +16,7 @@ export const getPermissions = async () => {
 }
 
 export const createRole = async (payload) => {
-  const { data } = await api.post('/roles', payload)
+  const { data } = await api.post('/roles/', payload)
   return data
 }
 

@@ -31,6 +31,7 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
+
   async (error) => {
     const status = error?.response?.status
     const requestUrl = error?.config?.url || ''
@@ -47,23 +48,41 @@ api.interceptors.response.use(
       requestUrl.includes('/auth/password-recovery/verify') ||
       requestUrl.includes('/auth/password-recovery/reset')
 
-    if (status === 401 && !isAuthRoute) {
-      const alreadyRedirecting = sessionStorage.getItem('session_expired_shown')
+    const detail = error?.response?.data?.detail || ''
+
+    const isRealSessionProblem =
+      detail.includes('No se pudo validar la credencial') ||
+      detail.includes('Could not validate credentials') ||
+      detail.includes('Token expirado') ||
+      detail.includes('token expired')
+
+    if (status === 401 && !isAuthRoute && isRealSessionProblem) {
+
+      const alreadyRedirecting =
+        sessionStorage.getItem('session_expired_shown')
 
       localStorage.removeItem('token')
       localStorage.removeItem('user')
 
       if (!alreadyRedirecting) {
-        sessionStorage.setItem('session_expired_shown', 'true')
+
+        sessionStorage.setItem(
+          'session_expired_shown',
+          'true'
+        )
 
         await Swal.fire({
           title: 'Sesion expirada',
-          text: apiMessage || 'Tu sesion ha expirado. Por favor, inicia sesion nuevamente.',
+          text: apiMessage ||
+            'Tu sesion ha expirado. Por favor, inicia sesion nuevamente.',
           icon: 'warning',
           confirmButtonText: 'OK',
         })
 
-        sessionStorage.removeItem('session_expired_shown')
+        sessionStorage.removeItem(
+          'session_expired_shown'
+        )
+
         window.location.href = '/login'
       }
     }
@@ -71,17 +90,21 @@ api.interceptors.response.use(
     if (status === 403) {
       await Swal.fire({
         title: 'Acceso denegado',
-        text: apiMessage || 'No tienes permisos para realizar esta accion.',
+        text: apiMessage ||
+          'No tienes permisos para realizar esta accion.',
         icon: 'warning',
         confirmButtonText: 'OK',
       })
     }
 
     if (status === 404 && !isAuthRoute) {
-      console.warn(apiMessage || 'Recurso no encontrado.')
+      console.warn(
+        apiMessage || 'Recurso no encontrado.'
+      )
     }
 
     error.normalizedMessage = apiMessage
+
     return Promise.reject(error)
   }
 )
