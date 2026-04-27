@@ -36,6 +36,20 @@ npm run dev
 ```sh
 npm run build
 ```
+
+### Dependency review
+
+Dependencies are pinned in `package.json` and resolved in `package-lock.json`.
+Before delivery, run:
+
+```sh
+npm audit --audit-level=high
+npm install --package-lock-only
+```
+
+The OWASP implementation notes for backend and frontend are documented in the
+backend repository file `OWASP_IMPLEMENTACION.txt`.
+
 ### ejecutar
 
 ```sh

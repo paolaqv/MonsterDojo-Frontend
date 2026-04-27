@@ -50,7 +50,10 @@ const handleLogin = async () => {
     router.push('/inicio_usuario')
   } catch (error) {
     const detail =
-      error?.response?.data?.detail || 'Correo electrónico o contraseña incorrectos.'
+      error?.normalizedMessage ||
+      error?.response?.data?.error?.message ||
+      error?.response?.data?.detail ||
+      'Correo electronico o contrasena incorrectos.'
 
     if (
       detail.includes('Debes cambiar tu contraseña') ||
@@ -90,12 +93,12 @@ const handleLogin = async () => {
 
           <div class="input-container">
             <label for="email">Correo Electrónico</label>
-            <input id="email" v-model="correo" type="email" name="correo" required />
+            <input id="email" v-model.trim="correo" type="email" name="correo" maxlength="254" required />
           </div>
 
           <div class="input-container">
             <label for="password">Contraseña</label>
-            <input id="password" v-model="password" type="password" name="password" required />
+            <input id="password" v-model="password" type="password" name="password" maxlength="256" required />
 
             <div v-if="errorMessage" class="error-message">
               {{ errorMessage }}

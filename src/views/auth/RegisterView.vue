@@ -108,7 +108,10 @@ const handleRegister = async () => {
     router.push('/login')
   } catch (error) {
     registerError.value =
-      error?.response?.data?.detail || 'No se pudo registrar el usuario.'
+      error?.normalizedMessage ||
+      error?.response?.data?.error?.message ||
+      error?.response?.data?.detail ||
+      'No se pudo registrar el usuario.'
   }
 }
 
@@ -141,25 +144,25 @@ const handleGoogleRegister = () => {
 
           <div class="input-container">
             <label for="email">Correo Electrónico</label>
-            <input id="email" v-model="form.email" type="text" name="email" required />
+            <input id="email" v-model.trim="form.email" type="email" name="email" maxlength="254" required />
             <span id="error-email" class="error-message">{{ errors.email }}</span>
           </div>
 
           <div class="input-container">
             <label for="name">Nombre</label>
-            <input id="name" v-model="form.name" type="text" name="name" required />
+            <input id="name" v-model.trim="form.name" type="text" name="name" maxlength="50" required />
             <span id="error-name" class="error-message">{{ errors.name }}</span>
           </div>
 
           <div class="input-container">
             <label for="phone">Teléfono</label>
-            <input id="phone" v-model="form.phone" type="phone" name="phone" required />
+            <input id="phone" v-model.trim="form.phone" type="tel" name="phone" maxlength="15" inputmode="numeric" required />
             <span id="error-phone" class="error-message">{{ errors.phone }}</span>
           </div>
 
           <div class="input-container">
             <label for="password">Contraseña</label>
-            <input id="password" v-model="form.password" type="password" name="password" required />
+            <input id="password" v-model="form.password" type="password" name="password" maxlength="256" required />
             <span id="error-password" class="error-message">{{ errors.password }}</span>
           </div>
 
@@ -170,6 +173,7 @@ const handleGoogleRegister = () => {
               v-model="form.confirmPassword"
               type="password"
               name="confirm-password"
+              maxlength="256"
               required
             />
             <span id="error-confirm-password" class="error-message">
@@ -184,6 +188,7 @@ const handleGoogleRegister = () => {
               v-model="form.pregunta"
               type="text"
               name="pregunta"
+              maxlength="255"
               required
               placeholder="Ejemplo: ¿Cuál es el nombre de tu mascota?"
             />
@@ -196,6 +201,7 @@ const handleGoogleRegister = () => {
               v-model="form.respuesta"
               type="text"
               name="respuesta"
+              maxlength="255"
               required
             />
           </div>
