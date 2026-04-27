@@ -45,7 +45,7 @@ const closeMenu = () => {
 
       <div class="overlay">
         <section id="home">
-          <h1 class="h-primary">Bienvenidos a Monster Dojo</h1>
+          <h1 class="h-primary">Bienvenidos</h1>
           <br>
           <button class="btn">Ordena ahora 📲</button>
         </section>
