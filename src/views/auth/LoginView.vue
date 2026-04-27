@@ -22,8 +22,10 @@ const handleLogin = async () => {
   try {
     errorMessage.value = ''
 
+    const normalizedEmail = correo.value.trim().toLowerCase()
+
     const result = await login({
-      correo: correo.value,
+      correo: normalizedEmail,
       password: password.value,
     })
 
@@ -59,7 +61,7 @@ const handleLogin = async () => {
       detail.includes('Debes cambiar tu contraseña') ||
       detail.includes('Tu contraseña ha expirado')
     ) {
-      sessionStorage.setItem('password_change_correo', correo.value.trim())
+      sessionStorage.setItem('password_change_correo', correo.value.trim().toLowerCase())
       router.push('/change-required-password')
       return
     }

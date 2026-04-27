@@ -53,11 +53,14 @@ const editForm = ref({
 
 const filteredUsers = computed(() => {
   if (!search.value.trim()) return users.value
+
   const query = search.value.toLowerCase()
 
   return users.value.filter((user) => {
+    const fullName = `${user.nombre || ''} ${user.primer_apellido || ''} ${user.segundo_apellido || ''}`.toLowerCase()
+
     return (
-      String(user.nombre).toLowerCase().includes(query) ||
+      fullName.includes(query) ||
       String(user.correo).toLowerCase().includes(query) ||
       String(user.telefono ?? '').toLowerCase().includes(query) ||
       String(user.rol_id_rol ?? '').toLowerCase().includes(query)
@@ -139,12 +142,12 @@ const saveUser = async (userData) => {
     } else {
       await createSecurityUser({
         nombre: userData.nombre,
-        correo: userData.correo,
+        primer_apellido: userData.primer_apellido,
+        segundo_apellido: userData.segundo_apellido || null,
         telefono: userData.telefono ? Number(userData.telefono) : null,
         password: userData.password,
-        pregunta_seguridad: userData.pregunta_seguridad,
-        respuesta_seguridad: userData.respuesta_seguridad,
         rol_id_rol: userData.rol_id_rol,
+        enviar_credenciales: !!userData.enviarCredenciales,
       })
     }
 
@@ -473,10 +476,12 @@ const handleSubmit = async (event) => {
   event.preventDefault()
 
   try {
-    await updateSecurityUser(editForm.value.id, {
-      nombre: editForm.value.name,
-      correo: editForm.value.email,
-      telefono: editForm.value.phone ? Number(editForm.value.phone) : null,
+    await updateSecurityUser(userData.id, {
+      nombre: userData.nombre,
+      primer_apellido: userData.primer_apellido,
+      segundo_apellido: userData.segundo_apellido || null,
+      telefono: userData.telefono ? Number(userData.telefono) : null,
+      rol_id_rol: userData.rol_id_rol,
     })
 
     Swal.fire({
@@ -599,7 +604,7 @@ const confirmDelete = (userId) => {
           <table>
             <thead>
               <tr>
-                <th>Nombre</th>
+                <th>Nombre Completo</th>
                 <th>Correo Electrónico</th>
                 <th>Teléfono</th>
                 <th>Rol</th>
@@ -609,7 +614,7 @@ const confirmDelete = (userId) => {
 
             <tbody>
               <tr v-for="user in filteredUsers" :key="user.id_usuario">
-                <td>{{ user.nombre }}</td>
+                <td>{{ user.nombre }} {{ user.primer_apellido || ''}} {{ user.segundo_apellido || '' }}</td>
                 <td>{{ user.correo }}</td>
                 <td>{{ user.telefono }}</td>
                 <td>{{ getUserRoleLabel(user) }}</td>
@@ -738,7 +743,7 @@ const confirmDelete = (userId) => {
       />
     </div>
 
-    <div v-if="showEditPopup" id="editPopup" class="popup">
+    <!-- <div v-if="showEditPopup" id="editPopup" class="popup">
       <div class="popup-content">
         <span class="close-btn" @click="closeEditPopup">&times;</span>
         <img :src="editUserImg" alt="User Icon" class="user-icon" />
@@ -803,7 +808,7 @@ const confirmDelete = (userId) => {
           </div>
         </form>
       </div>
-    </div>
+    </div> -->
   </div>
 </template>
 

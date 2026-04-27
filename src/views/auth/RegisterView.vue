@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import '@/assets/css/userforms.css'
 import logo from '@/assets/images/logo.png'
@@ -8,22 +8,23 @@ import { register } from '@/services/auth.service'
 const router = useRouter()
 const menuOpen = ref(false)
 const registerError = ref('')
-const googleMessage = ref('')
 
 const form = ref({
-  email: '',
-  name: '',
-  phone: '',
+  correo: '',
+  nombre: '',
+  primer_apellido: '',
+  segundo_apellido: '',
+  telefono: '',
   password: '',
   confirmPassword: '',
-  pregunta: '',
-  respuesta: '',
 })
 
 const errors = ref({
-  email: '',
-  name: '',
-  phone: '',
+  correo: '',
+  nombre: '',
+  primer_apellido: '',
+  segundo_apellido: '',
+  telefono: '',
   password: '',
   confirmPassword: '',
 })
@@ -32,57 +33,71 @@ const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
 }
 
+const passwordChecks = computed(() => {
+  const value = form.value.password || ''
+  return {
+    longitud: value.length >= 12,
+    mayuscula: /[A-Z]/.test(value),
+    minuscula: /[a-z]/.test(value),
+    numero: /\d/.test(value),
+    simbolo: /[^A-Za-z0-9]/.test(value),
+    coincide: value.length > 0 && value === form.value.confirmPassword,
+  }
+})
+
 const validateForm = () => {
   let valid = true
 
   registerError.value = ''
-  googleMessage.value = ''
 
-  errors.value.email = ''
-  errors.value.name = ''
-  errors.value.phone = ''
-  errors.value.password = ''
-  errors.value.confirmPassword = ''
+  errors.value = {
+    correo: '',
+    nombre: '',
+    primer_apellido: '',
+    segundo_apellido: '',
+    telefono: '',
+    password: '',
+    confirmPassword: '',
+  }
 
-  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i
   const phoneRegex = /^\d+$/
-  const passwordRegex =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+  const password = form.value.password || ''
 
-  if (!emailRegex.test(form.value.email)) {
-    errors.value.email = 'Por favor ingresa un correo electrónico válido.'
+  const hasMinLength = password.length >= 12
+  const hasUppercase = /[A-Z]/.test(password)
+  const hasLowercase = /[a-z]/.test(password)
+  const hasNumber = /\d/.test(password)
+  const hasSpecialChar = /[^A-Za-z0-9]/.test(password)
+
+  if (!emailRegex.test(form.value.correo.trim())) {
+    errors.value.correo = 'El correo debe ser una dirección válida con dominio @gmail.com.'
     valid = false
   }
 
-  if (!form.value.name.trim()) {
-    errors.value.name = 'El nombre no puede estar vacío.'
+  if (!form.value.nombre.trim()) {
+    errors.value.nombre = 'El nombre es obligatorio.'
     valid = false
   }
 
-  if (!phoneRegex.test(form.value.phone)) {
-    errors.value.phone =
-      'Por favor ingresa un número de teléfono válido. Solo se permiten números.'
+  if (!form.value.primer_apellido.trim()) {
+    errors.value.primer_apellido = 'El primer apellido es obligatorio.'
     valid = false
   }
 
-  if (!passwordRegex.test(form.value.password)) {
+  if (!phoneRegex.test(String(form.value.telefono).trim())) {
+    errors.value.telefono = 'Ingresa un número de teléfono válido.'
+    valid = false
+  }
+
+  if (!hasMinLength || !hasUppercase || !hasLowercase || !hasNumber || !hasSpecialChar) {
     errors.value.password =
-      'La contraseña debe tener al menos 8 caracteres, incluir al menos una letra mayúscula, una letra minúscula, un número y un caracter especial.'
+      'La contraseña debe tener al menos 12 caracteres, una mayúscula, una minúscula, un número y un carácter especial.'
     valid = false
   }
 
   if (form.value.password !== form.value.confirmPassword) {
     errors.value.confirmPassword = 'Las contraseñas no coinciden.'
-    valid = false
-  }
-
-  if (!form.value.pregunta.trim()) {
-    registerError.value = 'La pregunta de seguridad es obligatoria.'
-    valid = false
-  }
-
-  if (!form.value.respuesta.trim()) {
-    registerError.value = 'La respuesta de seguridad es obligatoria.'
     valid = false
   }
 
@@ -96,12 +111,12 @@ const handleRegister = async () => {
     registerError.value = ''
 
     await register({
-      nombre: form.value.name.trim(),
-      correo: form.value.email.trim(),
-      telefono: form.value.phone ? Number(form.value.phone) : null,
+      nombre: form.value.nombre.trim(),
+      primer_apellido: form.value.primer_apellido.trim(),
+      segundo_apellido: form.value.segundo_apellido.trim() || null,
+      correo: form.value.correo.trim().toLowerCase(),
+      telefono: form.value.telefono ? Number(String(form.value.telefono).trim()) : null,
       password: form.value.password,
-      pregunta_seguridad: form.value.pregunta.trim(),
-      respuesta_seguridad: form.value.respuesta.trim(),
       rol_id_rol: 'cliente',
     })
 
@@ -113,10 +128,6 @@ const handleRegister = async () => {
       error?.response?.data?.detail ||
       'No se pudo registrar el usuario.'
   }
-}
-
-const handleGoogleRegister = () => {
-  googleMessage.value = 'El registro con Google aún no está disponible.'
 }
 </script>
 
@@ -133,77 +144,70 @@ const handleGoogleRegister = () => {
 
       <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
         <li><RouterLink to="/">Inicio</RouterLink></li>
-        <li><RouterLink to="/login">Iniciar Sesion</RouterLink></li>
+        <li><RouterLink to="/login">Iniciar Sesión</RouterLink></li>
       </ul>
     </nav>
 
     <div class="container">
       <div class="form-container">
-        <form id="registration-form" @submit.prevent="handleRegister">
+        <form @submit.prevent="handleRegister">
           <h3>Crear una cuenta</h3>
 
           <div class="input-container">
-            <label for="email">Correo Electrónico</label>
-            <input id="email" v-model.trim="form.email" type="email" name="email" maxlength="254" required />
-            <span id="error-email" class="error-message">{{ errors.email }}</span>
-          </div>
-
-          <div class="input-container">
-            <label for="name">Nombre</label>
-            <input id="name" v-model.trim="form.name" type="text" name="name" maxlength="50" required />
-            <span id="error-name" class="error-message">{{ errors.name }}</span>
-          </div>
-
-          <div class="input-container">
-            <label for="phone">Teléfono</label>
-            <input id="phone" v-model.trim="form.phone" type="tel" name="phone" maxlength="15" inputmode="numeric" required />
-            <span id="error-phone" class="error-message">{{ errors.phone }}</span>
-          </div>
-
-          <div class="input-container">
-            <label for="password">Contraseña</label>
-            <input id="password" v-model="form.password" type="password" name="password" maxlength="256" required />
-            <span id="error-password" class="error-message">{{ errors.password }}</span>
-          </div>
-
-          <div class="input-container">
-            <label for="confirm-password">Verificar Contraseña</label>
+            <label>Correo electrónico</label>
             <input
-              id="confirm-password"
-              v-model="form.confirmPassword"
-              type="password"
-              name="confirm-password"
-              maxlength="256"
+              v-model="form.correo"
+              type="email"
               required
+              placeholder="usuario@gmail.com"
             />
-            <span id="error-confirm-password" class="error-message">
-              {{ errors.confirmPassword }}
-            </span>
+            <small class="input-help">
+              Ejemplo: usuario@gmail.com. Solo se permiten correos con dominio @gmail.com.
+            </small>
+            <span class="error-message">{{ errors.correo }}</span>
           </div>
 
           <div class="input-container">
-            <label for="pregunta">Pregunta de Seguridad</label>
-            <input
-              id="pregunta"
-              v-model="form.pregunta"
-              type="text"
-              name="pregunta"
-              maxlength="255"
-              required
-              placeholder="Ejemplo: ¿Cuál es el nombre de tu mascota?"
-            />
+            <label>Nombre</label>
+            <input v-model="form.nombre" type="text" required />
+            <span class="error-message">{{ errors.nombre }}</span>
           </div>
 
           <div class="input-container">
-            <label for="respuesta">Respuesta de Seguridad</label>
-            <input
-              id="respuesta"
-              v-model="form.respuesta"
-              type="text"
-              name="respuesta"
-              maxlength="255"
-              required
-            />
+            <label>Primer apellido</label>
+            <input v-model="form.primer_apellido" type="text" required />
+            <span class="error-message">{{ errors.primer_apellido }}</span>
+          </div>
+
+          <div class="input-container">
+            <label>Segundo apellido</label>
+            <input v-model="form.segundo_apellido" type="text" />
+            <span class="error-message">{{ errors.segundo_apellido }}</span>
+          </div>
+
+          <div class="input-container">
+            <label>Teléfono</label>
+            <input v-model="form.telefono" type="text" required />
+            <span class="error-message">{{ errors.telefono }}</span>
+          </div>
+
+          <div class="input-container">
+            <label>Contraseña</label>
+            <input v-model="form.password" type="password" required />
+            <div class="password-checklist">
+              <p :class="{ valid: passwordChecks.longitud }">Al menos 12 caracteres</p>
+              <p :class="{ valid: passwordChecks.mayuscula }">Incluye mayúscula</p>
+              <p :class="{ valid: passwordChecks.minuscula }">Incluye minúscula</p>
+              <p :class="{ valid: passwordChecks.numero }">Incluye número</p>
+              <p :class="{ valid: passwordChecks.simbolo }">Incluye carácter especial</p>
+            </div>
+            <span class="error-message">{{ errors.password }}</span>
+          </div>
+
+          <div class="input-container">
+            <label>Confirmar contraseña</label>
+            <input v-model="form.confirmPassword" type="password" required />
+            <span class="error-message">{{ errors.confirmPassword }}</span>
           </div>
 
           <div v-if="registerError" class="error-message">
@@ -216,15 +220,6 @@ const handleGoogleRegister = () => {
               ¿Ya tienes una cuenta?
               <RouterLink to="/login">Inicia sesión</RouterLink>
             </span>
-          </div>
-
-          <div>
-            <a href="#" class="google-btn" @click.prevent="handleGoogleRegister">
-              Registrarse con Google
-            </a>
-            <div v-if="googleMessage" class="error-message">
-              {{ googleMessage }}
-            </div>
           </div>
         </form>
       </div>
@@ -240,19 +235,29 @@ const handleGoogleRegister = () => {
   height: auto;
 }
 
-.google-btn {
-  display: inline-block;
-  background-color: #db4437;
-  color: white;
-  border-radius: 4px;
-  padding: 10px 15px;
-  margin-top: 10px;
-  text-align: center;
-  text-decoration: none;
-  font-weight: bold;
+.input-help {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.8em;
+  color: #6b7280;
 }
 
-.google-btn:hover {
-  background-color: #c23321;
+.password-checklist {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f7fafc;
+  border: 1px solid #dde7ed;
+}
+
+.password-checklist p {
+  margin: 6px 0;
+  color: #7a8590;
+  font-size: 14px;
+}
+
+.password-checklist p.valid {
+  color: #1f7a38;
+  font-weight: 600;
 }
 </style>
