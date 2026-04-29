@@ -123,7 +123,10 @@ const handleRegister = async () => {
     router.push('/login')
   } catch (error) {
     registerError.value =
-      error?.response?.data?.detail || 'No se pudo registrar el usuario.'
+      error?.normalizedMessage ||
+      error?.response?.data?.error?.message ||
+      error?.response?.data?.detail ||
+      'No se pudo registrar el usuario.'
   }
 }
 </script>

@@ -41,6 +41,7 @@ import ReservationsAdminPanelView from '@/views/reservations/ReservationsAdminPa
 import AuditPanelView from "@/views/security/AuditPanelView.vue"
 import PasswordPolicyView from '@/views/security/PasswordPolicyView.vue'
 import ChangeRequiredPasswordView from '@/views/auth/ChangeRequiredPasswordView.vue'
+
 const routes = [
   {
     path: '/',
@@ -95,7 +96,7 @@ const routes = [
     meta: { roles: ['encargadoSeguridad'] },
   },
   {
- path:"/security/auditoria",
+ path:"/auditoria",
  name:"auditPanel",
  component:AuditPanelView,
  meta: { roles: ['encargadoSeguridad'] },
@@ -339,7 +340,7 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  if (!authStore.user) {
+  if (!authStore.user || (needsPermissions && !authStore.permissions.length)) {
     try {
       await authStore.refreshCurrentUser()
     } catch (error) {

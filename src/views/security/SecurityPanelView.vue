@@ -16,6 +16,18 @@
             Desde este panel puedes gestionar usuarios, roles y las políticas de contraseña del sistema.
           </p>
         </div>
+        <div class="audit-access">
+  <router-link to="/auditoria" class="audit-button">
+      <span class="audit-icon">🛡</span>
+
+      <div class="audit-text">
+        <strong>Bitácora de Auditoría</strong>
+        <small>Consultar eventos críticos y registros del sistema</small>
+      </div>
+
+      <span class="audit-arrow">→</span>
+  </router-link>
+</div>
       </div>
     </div>
 
@@ -38,22 +50,64 @@ justify-content:center;
 }
 
 .audit-button{
+width:100%;
+max-width:700px;
 
-padding:14px 30px;
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:20px;
+
+padding:22px 28px;
+
+background:linear-gradient(135deg,#192847,#243a66);
+color:white;
 
 text-decoration:none;
 
-border-radius:10px;
+border-radius:18px;
 
-font-weight:bold;
+box-shadow:
+0 8px 24px rgba(0,0,0,.18);
 
-transition:.3s;
+transition:.25s ease;
 }
 
 .audit-button:hover{
-transform:scale(1.03);
+transform:translateY(-4px) scale(1.01);
+box-shadow:
+0 14px 30px rgba(0,0,0,.24);
 }
 
+.audit-icon{
+font-size:34px;
+flex-shrink:0;
+}
+
+.audit-text{
+display:flex;
+flex-direction:column;
+flex:1;
+text-align:left;
+}
+
+.audit-text strong{
+font-size:22px;
+font-weight:700;
+line-height:1.2;
+}
+
+.audit-text small{
+margin-top:6px;
+font-size:14px;
+opacity:.85;
+}
+
+.audit-arrow{
+font-size:30px;
+font-weight:bold;
+opacity:.9;
+}
 .security-page-shell {
   padding: 170px 24px 24px;
 }

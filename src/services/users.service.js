@@ -11,7 +11,7 @@ export const updateCurrentUser = async (payload) => {
 }
 
 export const getSecurityUsers = async () => {
-  const { data } = await api.get('/security/users')
+  const { data } = await api.get('/security/users/')
   return data
 }
 
