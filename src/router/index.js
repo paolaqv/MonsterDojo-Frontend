@@ -340,15 +340,15 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  if (!authStore.user || (needsPermissions && !authStore.permissions.length)) {
-    try {
-      await authStore.refreshCurrentUser()
-    } catch (error) {
-      authStore.clearSession()
-      next('/login')
-      return
-    }
+ if (!authStore.user || !authStore.permissions.length) {
+  try {
+    await authStore.refreshCurrentUser()
+  } catch (error) {
+    authStore.clearSession()
+    next('/login')
+    return
   }
+}
 
   if (!authStore.user) {
     next('/login')

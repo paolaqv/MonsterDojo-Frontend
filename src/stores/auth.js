@@ -13,11 +13,11 @@ const toStoredUser = (user = {}) => ({
   id_usuario: user.id_usuario,
   nombre: user.nombre,
   rol_id_rol: user.rol_id_rol || user.rol || '',
+  permisos: Array.isArray(user.permisos) ? user.permisos : [],
 })
 
 const toRuntimeUser = (user = {}) => ({
   ...toStoredUser(user),
-  permisos: Array.isArray(user.permisos) ? user.permisos : [],
 })
 
 export const useAuthStore = defineStore('auth', {
