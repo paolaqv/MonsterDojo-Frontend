@@ -19,6 +19,7 @@
 |   |   |   |-- inicio-usuario.css
 |   |   |   |-- inicio.css
 |   |   |   |-- navbar.css
+|   |   |   |-- password-policy.css
 |   |   |   |-- perfil_usuario.css
 |   |   |   |-- popup.css
 |   |   |   |-- popup_carrito.css
@@ -76,10 +77,12 @@
 |   |-- router
 |   |   `-- index.js
 |   |-- services
+|   |   |-- activityLogs.service.js
 |   |   |-- api.js
 |   |   |-- auth.service.js
 |   |   |-- games.service.js
 |   |   |-- orders.service.js
+|   |   |-- passwordPolicy.service.js
 |   |   |-- products.service.js
 |   |   |-- reservations.service.js
 |   |   |-- roles.service.js
@@ -89,6 +92,7 @@
 |   |   |-- auth.js
 |   |   `-- counter.js
 |   |-- utils
+|   |   |-- inputSanitizer.js
 |   |   `-- permissions.js
 |   `-- views
 |       |-- admin
@@ -96,6 +100,7 @@
 |       |   |-- AdminProfileView.vue
 |       |   `-- UsersPanelView.vue
 |       |-- auth
+|       |   |-- ChangeRequiredPasswordView.vue
 |       |   |-- LoginView.vue
 |       |   |-- NewPasswordView.vue
 |       |   |-- RegisterView.vue
@@ -130,11 +135,14 @@
 |       |   |-- ReservationsPanelView.vue
 |       |   `-- UserReservationView.vue
 |       |-- security
+|       |   |-- AuditPanelView.vue
+|       |   |-- PasswordPolicyView.vue
 |       |   |-- RoleFormPopup.vue
-|       |   `-- SecurityPanelView.vue
+|       |   |-- SecurityPanelView.vue
+|       |   `-- UserFormPopup.vue
 |       `-- user
 |           |-- UserHomeView.vue
 |           `-- UserProfileView.vue
 `-- vite.config.js
 
-24 directories, 113 files
+24 directories, 121 files

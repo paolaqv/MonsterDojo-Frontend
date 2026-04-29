@@ -41,6 +41,7 @@ import ReservationsAdminPanelView from '@/views/reservations/ReservationsAdminPa
 import AuditPanelView from "@/views/security/AuditPanelView.vue"
 import PasswordPolicyView from '@/views/security/PasswordPolicyView.vue'
 import ChangeRequiredPasswordView from '@/views/auth/ChangeRequiredPasswordView.vue'
+
 const routes = [
   {
     path: '/',
@@ -95,7 +96,7 @@ const routes = [
     meta: { roles: ['encargadoSeguridad'] },
   },
   {
- path:"/security/auditoria",
+ path:"/auditoria",
  name:"auditPanel",
  component:AuditPanelView,
  meta: { roles: ['encargadoSeguridad'] },
