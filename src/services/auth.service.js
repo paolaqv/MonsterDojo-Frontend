@@ -1,7 +1,7 @@
 import api from './api'
 
-export const login = async ({ correo, password }) => {
-  const { data } = await api.post('/auth/login', { correo, password })
+export const login = async (payload) => {
+  const { data } = await api.post('/auth/login', payload)
 
   if (data?.access_token) {
     localStorage.setItem('token', data.access_token)
