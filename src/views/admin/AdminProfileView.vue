@@ -95,7 +95,7 @@ onMounted(async () => {
           <div class="input-container">
             <label for="email">Correo Electrónico</label>
             <div class="input-with-icon">
-<input id="name" v-model="form.name" type="text" name="name" readonly />              
+<input id="email" v-model="form.email" type="text" name="email" readonly />
             </div>
           </div>
 

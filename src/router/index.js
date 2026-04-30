@@ -211,13 +211,14 @@ const routes = [
   {
     path: '/ver_pedidos',
     name: 'ver_pedidos',
-    component: UserOrdersView,
+    component: MyOrdersView,
     meta: { roles: ['cliente'] },
   },
   {
-    path: '/ver_Mispedidos',
-    name: 'ver_Mispedidos',
-    component: MyOrdersView,
+    path: '/ver_pedidos/:id',
+    name: 'ver_pedido_detalle',
+    component: UserOrdersView,
+    props: true,
     meta: { roles: ['cliente'] },
   },
 

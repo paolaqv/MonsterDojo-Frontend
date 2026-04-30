@@ -1,7 +1,11 @@
 <script setup>
+import { useRouter } from 'vue-router'
 import '@/assets/css/inicio-usuario.css'
 import '@/assets/css/navbar.css'
 import logoMd from '@/assets/images/logo_md.png'
+
+const router = useRouter()
+const goToFoodMenu = () => router.push('/food-menu')
 import food1 from '@/assets/images/food1.jpg'
 import food2 from '@/assets/images/food2.jpg'
 import food3 from '@/assets/images/food3.jpg'
@@ -20,7 +24,7 @@ import UserNavbar from '@/components/navigation/UserNavbar.vue'
         <section id="home">
           <h1 class="h-primary">Bienvenidos a Monster Dojo</h1>
           <br />
-          <button class="btn">Ordena ahora 📲</button>
+          <button class="btn" @click="goToFoodMenu">Ordena ahora 📲</button>
         </section>
       </div>
     </header>

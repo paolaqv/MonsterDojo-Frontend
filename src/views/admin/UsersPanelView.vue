@@ -473,40 +473,6 @@ const confirmCancel = () => {
   })
 }
 
-const handleSubmit = async (event) => {
-  event.preventDefault()
-
-  try {
-await updateSecurityUser(userData.id, {
-  nombre: userData.nombre,
-  primer_apellido: userData.primer_apellido,
-  segundo_apellido: userData.segundo_apellido || null,
-  telefono: userData.telefono ? Number(userData.telefono) : null,
-  rol_id_rol: userData.rol_id_rol,
-})
-
-    Swal.fire({
-      title: '¡Éxito!',
-      text: 'Cambios guardados con éxito',
-      icon: 'success',
-      confirmButtonText: 'OK',
-      customClass: { confirmButton: 'swal2-confirm' },
-    }).then(() => {
-      closeEditPopup()
-      clearEditForm()
-      loadUsers()
-    })
-  } catch (error) {
-    Swal.fire({
-      title: 'Error',
-      text: error?.response?.data?.detail || 'Hubo un problema al guardar los cambios.',
-      icon: 'error',
-      confirmButtonText: 'OK',
-      customClass: { confirmButton: 'swal2-confirm' },
-    })
-  }
-}
-
 const confirmDelete = (userId) => {
   Swal.fire({
     title: '¿Está seguro?',

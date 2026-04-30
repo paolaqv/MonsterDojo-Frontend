@@ -113,7 +113,6 @@ const applyUserData = () => {
   userForm.primer_apellido = props.userData.primer_apellido || ''
   userForm.segundo_apellido = props.userData.segundo_apellido || ''
   userForm.correo = props.userData.correo || ''
-  userForm.correo = props.userData.correo || ''
   userForm.correo_contacto = props.userData.correo_contacto || ''
   userForm.codigo_verificacion = ''
   userForm.telefono = props.userData.telefono ?? ''
