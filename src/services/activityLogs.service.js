@@ -1,58 +1,13 @@
-import api from "./api";
+import api from './api'
 
-
-export const getAuditLogs = async () => {
-
-   try{
-
-      const response = await api.get(
-         "/logs"
-      );
-
-      return response.data;
-
-   }
-
-   catch(error){
-
-      console.error(
-         "Error cargando auditoría",
-         error
-      );
-
-      throw error;
-
-   }
-
-};
-
-
+export const getAuditLogs = async (params = {}) => {
+  const { data } = await api.get('/logs/', { params })
+  return data
+}
 
 export const getCriticalLogs = async () => {
-
-   try{
-
-      const response = await api.get(
-         "/logs"
-      );
-
-      return response.data.filter(
-         log =>
-            log.severidad==="ALTA" ||
-            log.severidad==="CRITICA"
-      );
-
-   }
-
-   catch(error){
-
-      console.error(
-         "Error cargando logs críticos",
-         error
-      );
-
-      throw error;
-
-   }
-
-};
+  const { data } = await api.get('/logs/', {
+    params: { critical_only: true },
+  })
+  return data
+}

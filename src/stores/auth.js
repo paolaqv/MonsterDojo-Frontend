@@ -9,6 +9,17 @@ const getStoredUserSafely = () => {
   }
 }
 
+const toStoredUser = (user = {}) => ({
+  id_usuario: user.id_usuario,
+  nombre: user.nombre,
+  rol_id_rol: user.rol_id_rol || user.rol || '',
+  permisos: Array.isArray(user.permisos) ? user.permisos : [],
+})
+
+const toRuntimeUser = (user = {}) => ({
+  ...toStoredUser(user),
+})
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: getStoredUserSafely(),
@@ -23,8 +34,8 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     setUser(user) {
-      this.user = user
-      localStorage.setItem('user', JSON.stringify(user))
+      this.user = toRuntimeUser(user)
+      localStorage.setItem('user', JSON.stringify(toStoredUser(user)))
     },
 
     setSession({ access_token, user }) {

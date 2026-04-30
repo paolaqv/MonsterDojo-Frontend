@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   UserRound,
   Mail,
@@ -11,7 +11,9 @@ import {
   Sparkles,
   BadgeInfo,
 } from 'lucide-vue-next'
-
+import {
+  requestEmailVerification,
+} from '@/services/auth.service'
 const props = defineProps({
   show: {
     type: Boolean,
@@ -41,12 +43,27 @@ const userForm = reactive({
   primer_apellido: '',
   segundo_apellido: '',
   correo: '',
+  correo_contacto: '',
+  codigo_verificacion: '',
   telefono: '',
-  password: '',
   rol_id_rol: '',
   enviarCredenciales: true,
 })
 
+const verificationLoading = ref(false)
+const verificationSent = ref(false)
+const correoVerificado = ref(false)
+const verificationMessage = ref('')
+const verificationError = ref('')
+const errors = reactive({
+  nombre: '',
+  primer_apellido: '',
+  segundo_apellido: '',
+  telefono: '',
+  correo_contacto: '',
+  codigo_verificacion: '',
+  rol_id_rol: '',
+})
 const sanitize = (value) =>
   (value || '')
     .normalize('NFD')
@@ -62,11 +79,11 @@ const buildPreviewEmail = () => {
 
   if (!name || !firstSurname) return ''
 
-  let email = `${name[0]}${firstSurname}.monsterdojo@gmail.com`
+let email = `${name[0]}${firstSurname}@monsterdojo.com`
 
-  if (secondSurname) {
-    email = `${name[0]}${firstSurname}.${secondSurname[0]}.monsterdojo@gmail.com`
-  }
+if (secondSurname) {
+  email = `${name[0]}${firstSurname}${secondSurname[0]}@monsterdojo.com`
+}
 
   return email
 }
@@ -79,10 +96,17 @@ const resetForm = () => {
   userForm.primer_apellido = ''
   userForm.segundo_apellido = ''
   userForm.correo = ''
+  userForm.correo_contacto = ''
+  userForm.codigo_verificacion = ''
   userForm.telefono = ''
-  userForm.password = ''
   userForm.rol_id_rol = ''
   userForm.enviarCredenciales = true
+
+  verificationSent.value = false
+  correoVerificado.value = false
+  verificationMessage.value = ''
+  verificationError.value = ''
+
   currentStep.value = 0
 }
 
@@ -97,11 +121,18 @@ const applyUserData = () => {
   userForm.primer_apellido = props.userData.primer_apellido || ''
   userForm.segundo_apellido = props.userData.segundo_apellido || ''
   userForm.correo = props.userData.correo || ''
+  userForm.correo_contacto = props.userData.correo_contacto || ''
+  userForm.codigo_verificacion = ''
   userForm.telefono = props.userData.telefono ?? ''
   userForm.password = ''
   userForm.rol_id_rol = props.userData.rol_id_rol || ''
   userForm.enviarCredenciales = true
   currentStep.value = 0
+
+  correoVerificado.value = props.isEditing
+  verificationSent.value = false
+  verificationMessage.value = ''
+  verificationError.value = ''
 }
 
 watch(
@@ -119,6 +150,18 @@ watch(
   { deep: true }
 )
 
+watch(
+  () => userForm.correo_contacto,
+  () => {
+    if (!props.isEditing) {
+      userForm.codigo_verificacion = ''
+      verificationSent.value = false
+      correoVerificado.value = false
+      verificationMessage.value = ''
+      verificationError.value = ''
+    }
+  }
+)
 const selectedRoleName = computed(() => {
   const role = props.roles.find((r) => r.id_rol === userForm.rol_id_rol)
   return role?.nombre || 'Sin rol'
@@ -129,26 +172,32 @@ const effectiveEmail = computed(() => {
 })
 
 const canGoNext = computed(() => {
-  if (currentStep.value === 0) {
-    return (
-      userForm.nombre.trim() !== '' &&
-      userForm.primer_apellido.trim() !== '' &&
-      String(userForm.telefono).trim() !== ''
-    )
-  }
+if (currentStep.value === 0) {
+  const basicDataOk =
+    userForm.nombre.trim() !== '' &&
+    userForm.primer_apellido.trim() !== '' &&
+    String(userForm.telefono).trim() !== ''
 
-  if (currentStep.value === 1) {
-    if (props.isEditing) {
-      return userForm.rol_id_rol.trim() !== ''
-    }
+  if (props.isEditing) return basicDataOk
 
-    return userForm.rol_id_rol.trim() !== '' && userForm.password.trim() !== ''
-  }
+  return (
+    basicDataOk &&
+    userForm.correo_contacto.trim() !== '' &&
+    correoVerificado.value
+  )
+}
+
+if (currentStep.value === 1) {
+  return userForm.rol_id_rol.trim() !== ''
+}
 
   return true
 })
 
 const nextStep = () => {
+  if (currentStep.value === 0 && !validateStepZero()) return
+  if (currentStep.value === 1 && !validateStepOne()) return
+
   if (!canGoNext.value) return
   if (currentStep.value < 2) currentStep.value++
 }
@@ -156,7 +205,166 @@ const nextStep = () => {
 const prevStep = () => {
   if (currentStep.value > 0) currentStep.value--
 }
+const getErrorMessage = (error, fallback) =>
+  error?.normalizedMessage ||
+  error?.response?.data?.error?.message ||
+  error?.response?.data?.detail ||
+  fallback
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const nameRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/
+const phoneRegex = /^[0-9]{7,10}$/
+
+const clearErrors = () => {
+  errors.nombre = ''
+  errors.primer_apellido = ''
+  errors.segundo_apellido = ''
+  errors.telefono = ''
+  errors.correo_contacto = ''
+  errors.codigo_verificacion = ''
+  errors.rol_id_rol = ''
+}
+
+const validateStepZero = () => {
+  clearErrors()
+
+  let valid = true
+
+  const nombre = userForm.nombre.trim()
+  const primerApellido = userForm.primer_apellido.trim()
+  const segundoApellido = userForm.segundo_apellido.trim()
+  const telefono = String(userForm.telefono).trim()
+  const correoContacto = userForm.correo_contacto.trim().toLowerCase()
+
+  if (!nombre) {
+    errors.nombre = 'El nombre es obligatorio.'
+    valid = false
+  } else if (nombre.length < 2) {
+    errors.nombre = 'El nombre debe tener al menos 2 caracteres.'
+    valid = false
+  } else if (!nameRegex.test(nombre)) {
+    errors.nombre = 'El nombre solo debe contener letras y espacios.'
+    valid = false
+  }
+
+  if (!primerApellido) {
+    errors.primer_apellido = 'El primer apellido es obligatorio.'
+    valid = false
+  } else if (primerApellido.length < 2) {
+    errors.primer_apellido = 'El primer apellido debe tener al menos 2 caracteres.'
+    valid = false
+  } else if (!nameRegex.test(primerApellido)) {
+    errors.primer_apellido = 'El primer apellido solo debe contener letras y espacios.'
+    valid = false
+  }
+
+  if (segundoApellido && !nameRegex.test(segundoApellido)) {
+    errors.segundo_apellido = 'El segundo apellido solo debe contener letras y espacios.'
+    valid = false
+  }
+
+  if (!telefono) {
+    errors.telefono = 'El teléfono es obligatorio.'
+    valid = false
+  } else if (!phoneRegex.test(telefono)) {
+    errors.telefono = 'El teléfono debe tener entre 7 y 10 dígitos numéricos.'
+    valid = false
+  }
+
+  if (!props.isEditing) {
+    if (!correoContacto) {
+      errors.correo_contacto = 'El correo de contacto es obligatorio.'
+      valid = false
+    } else if (!emailRegex.test(correoContacto)) {
+      errors.correo_contacto = 'Ingresa un correo válido.'
+      valid = false
+    }
+
+    if (!verificationSent.value) {
+      errors.correo_contacto = 'Debes enviar el código de verificación.'
+      valid = false
+    }
+
+    if (!userForm.codigo_verificacion.trim()) {
+      errors.codigo_verificacion = 'Debes ingresar el código de verificación.'
+      valid = false
+    } else if (!/^\d{6}$/.test(userForm.codigo_verificacion.trim())) {
+      errors.codigo_verificacion = 'El código debe tener 6 dígitos.'
+      valid = false
+    }
+
+    if (!correoVerificado.value) {
+      errors.codigo_verificacion = 'Debes verificar el código antes de continuar.'
+      valid = false
+    }
+  }
+
+  return valid
+}
+
+const validateStepOne = () => {
+  errors.rol_id_rol = ''
+
+  if (!userForm.rol_id_rol.trim()) {
+    errors.rol_id_rol = 'Debes seleccionar un rol.'
+    return false
+  }
+
+  return true
+}
+const sendVerificationCode = async () => {
+  try {
+    verificationError.value = ''
+    verificationMessage.value = ''
+userForm.codigo_verificacion = ''
+correoVerificado.value = false
+    const correo = userForm.correo_contacto.trim().toLowerCase()
+
+if (!emailRegex.test(correo)) {
+  errors.correo_contacto = 'Ingresa un correo válido.'
+  verificationError.value = 'Ingresa un correo real válido.'
+  return
+}
+
+    verificationLoading.value = true
+
+    await requestEmailVerification({ correo })
+    errors.correo_contacto = ''
+    errors.codigo_verificacion = ''
+    verificationSent.value = true
+    correoVerificado.value = false
+    verificationMessage.value = 'Código enviado al correo de contacto.'
+  } catch (error) {
+    verificationError.value = getErrorMessage(
+      error,
+      'No se pudo enviar el código de verificación.'
+    )
+  } finally {
+    verificationLoading.value = false
+  }
+}
+
+const confirmVerificationCode = () => {
+  verificationError.value = ''
+  verificationMessage.value = ''
+
+  const codigo = userForm.codigo_verificacion.trim()
+
+if (!codigo) {
+  errors.codigo_verificacion = 'Ingresa el código de verificación.'
+  verificationError.value = 'Ingresa el código de verificación.'
+  return
+}
+
+if (!/^\d{6}$/.test(codigo)) {
+  errors.codigo_verificacion = 'El código debe tener 6 dígitos.'
+  verificationError.value = 'El código debe tener 6 dígitos.'
+  return
+}
+
+  correoVerificado.value = true
+  verificationMessage.value = 'Código ingresado. Se validará al registrar el usuario.'
+}
 const closePopup = () => {
   resetForm()
   emit('close')
@@ -214,28 +422,105 @@ const saveUser = () => {
             <div class="form-group">
               <label>Nombre</label>
               <input v-model="userForm.nombre" type="text" placeholder="Nombre" />
+              <span v-if="errors.nombre" class="error-message">
+  {{ errors.nombre }}
+</span>
             </div>
 
             <div class="form-group">
               <label>Primer apellido</label>
               <input v-model="userForm.primer_apellido" type="text" placeholder="Primer apellido" />
+              <span v-if="errors.primer_apellido" class="error-message">
+  {{ errors.primer_apellido }}
+</span>
             </div>
 
             <div class="form-group">
               <label>Segundo apellido</label>
               <input v-model="userForm.segundo_apellido" type="text" placeholder="Segundo apellido" />
+              <span v-if="errors.segundo_apellido" class="error-message">
+  {{ errors.segundo_apellido }}
+</span>
             </div>
 
             <div class="form-group">
               <label>Teléfono</label>
-              <input v-model="userForm.telefono" type="text" placeholder="70000000" />
+<input
+  v-model="userForm.telefono"
+  type="text"
+  maxlength="10"
+  placeholder="70000000"
+/>              <span v-if="errors.telefono" class="error-message">
+  {{ errors.telefono }}
+</span>
             </div>
+              <div class="form-group">
+                <label>Correo real de contacto</label>
+                <input
+                  v-model="userForm.correo_contacto"
+                  type="email"
+                  :readonly="isEditing || correoVerificado"
+                  placeholder="usuario@gmail.com / usuario@hotmail.com / usuario@ucb.edu.bo"
+                />
+                <small>
+                  A este correo se enviará el código de verificación y las credenciales de acceso.
+                </small>
+                <span v-if="errors.correo_contacto" class="error-message">
+  {{ errors.correo_contacto }}
+</span>
+              </div>
 
-            <div class="form-group">
-              <label>Correo de autenticación</label>
-              <input :value="effectiveEmail" type="text" readonly />
-              <small v-if="!isEditing">Se generará automáticamente y el backend resolverá duplicados si ya existe.</small>
-            </div>
+              <div v-if="!isEditing" class="form-group">
+                <button
+                  v-wave
+                  type="button"
+                  class="secondary-btn"
+                  :disabled="verificationLoading || verificationSent || correoVerificado"
+                  @click="sendVerificationCode"
+                >
+                  {{ verificationSent ? 'Código enviado' : 'Enviar código' }}
+                </button>
+              </div>
+
+              <div v-if="!isEditing && verificationSent" class="form-group">
+                <label>Código de verificación</label>
+                <input
+                  v-model="userForm.codigo_verificacion"
+                  type="text"
+                  maxlength="6"
+                  placeholder="123456"
+                  :readonly="correoVerificado"
+                />
+                <span v-if="errors.codigo_verificacion" class="error-message">
+  {{ errors.codigo_verificacion }}
+</span>
+
+                <button
+                  v-wave
+                  type="button"
+                  class="secondary-btn"
+                  :disabled="verificationLoading || correoVerificado"
+                  @click="confirmVerificationCode"
+                >
+                  Confirmar código ingresado
+                </button>
+              </div>
+
+              <p v-if="verificationMessage" class="success-message">
+                {{ verificationMessage }}
+              </p>
+
+              <p v-if="verificationError" class="error-message">
+                {{ verificationError }}
+              </p>
+
+              <div class="form-group">
+                <label>Correo de autenticación generado</label>
+                <input :value="effectiveEmail" type="text" readonly />
+                <small v-if="!isEditing">
+                  Internamente se resolverá duplicados. El correo final se enviará al correo de contacto una vez se cree el usuario.
+                </small>
+              </div>
           </div>
 
           <div v-show="currentStep.value === 1" class="role-step-panel">
@@ -247,12 +532,12 @@ const saveUser = () => {
                   {{ role.nombre }} ({{ role.id_rol }})
                 </option>
               </select>
+              <span v-if="errors.rol_id_rol" class="error-message">
+  {{ errors.rol_id_rol }}
+</span>
             </div>
 
-            <div v-if="!isEditing" class="form-group">
-              <label>Contraseña temporal</label>
-              <input v-model="userForm.password" type="text" placeholder="Temp1234!" />
-            </div>
+
 
             <label class="checkbox-row">
               <input v-model="userForm.enviarCredenciales" type="checkbox" />
@@ -281,7 +566,15 @@ const saveUser = () => {
               <div class="summary-item enhanced-summary-item">
                 <div class="summary-item-left">
                   <Mail :size="18" />
-                  <span>Correo</span>
+                  <span>Correo de contacto</span>
+                </div>
+                <strong>{{ userForm.correo_contacto || '-' }}</strong>
+              </div>
+
+              <div class="summary-item enhanced-summary-item">
+                <div class="summary-item-left">
+                  <Mail :size="18" />
+                  <span>Correo de acceso</span>
                 </div>
                 <strong>{{ effectiveEmail || '-' }}</strong>
               </div>
@@ -358,7 +651,7 @@ const saveUser = () => {
           v-wave
           type="button"
           class="primary-btn"
-          :disabled="!canGoNext"
+          :disabled="false"
           @click="nextStep"
         >
           Siguiente

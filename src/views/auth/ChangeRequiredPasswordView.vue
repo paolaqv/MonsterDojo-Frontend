@@ -75,9 +75,12 @@ const handleSubmit = async () => {
     setTimeout(() => {
       router.push('/login')
     }, 1200)
-  } catch (error) {
+   } catch (error) {
     errorMessage.value =
-      error?.response?.data?.detail || 'No se pudo actualizar la contraseña.'
+      error?.normalizedMessage ||
+      error?.response?.data?.error?.message ||
+      error?.response?.data?.detail ||
+      'No se pudo actualizar la contraseña.'
   } finally {
     loading.value = false
   }

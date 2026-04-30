@@ -41,6 +41,7 @@ import ReservationsAdminPanelView from '@/views/reservations/ReservationsAdminPa
 import AuditPanelView from "@/views/security/AuditPanelView.vue"
 import PasswordPolicyView from '@/views/security/PasswordPolicyView.vue'
 import ChangeRequiredPasswordView from '@/views/auth/ChangeRequiredPasswordView.vue'
+
 const routes = [
   {
     path: '/',
@@ -95,7 +96,7 @@ const routes = [
     meta: { roles: ['encargadoSeguridad'] },
   },
   {
- path:"/security/auditoria",
+ path:"/auditoria",
  name:"auditPanel",
  component:AuditPanelView,
  meta: { roles: ['encargadoSeguridad'] },
@@ -210,13 +211,14 @@ const routes = [
   {
     path: '/ver_pedidos',
     name: 'ver_pedidos',
-    component: UserOrdersView,
+    component: MyOrdersView,
     meta: { roles: ['cliente'] },
   },
   {
-    path: '/ver_Mispedidos',
-    name: 'ver_Mispedidos',
-    component: MyOrdersView,
+    path: '/ver_pedidos/:id',
+    name: 'ver_pedido_detalle',
+    component: UserOrdersView,
+    props: true,
     meta: { roles: ['cliente'] },
   },
 
@@ -339,15 +341,15 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  if (!authStore.user) {
-    try {
-      await authStore.refreshCurrentUser()
-    } catch (error) {
-      authStore.clearSession()
-      next('/login')
-      return
-    }
+ if (!authStore.user || !authStore.permissions.length) {
+  try {
+    await authStore.refreshCurrentUser()
+  } catch (error) {
+    authStore.clearSession()
+    next('/login')
+    return
   }
+}
 
   if (!authStore.user) {
     next('/login')

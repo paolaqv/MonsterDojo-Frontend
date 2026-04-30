@@ -95,7 +95,7 @@ const deleteReserva = (reserva) => {
 
 const verDetalles = (idReserva) => {
   if (!canViewReservations.value) return
-  router.push({ name: 'detalle-reserva', params: { id: idReserva } })
+  router.push({ name: 'verDetalle-reserva', params: { id: idReserva } })
 }
 
 const formatFechaHora = (fecha) => {

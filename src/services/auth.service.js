@@ -1,14 +1,10 @@
 import api from './api'
 
-export const login = async ({ correo, password }) => {
-  const { data } = await api.post('/auth/login', { correo, password })
+export const login = async (payload) => {
+  const { data } = await api.post('/auth/login', payload)
 
   if (data?.access_token) {
     localStorage.setItem('token', data.access_token)
-  }
-
-  if (data?.user) {
-    localStorage.setItem('user', JSON.stringify(data.user))
   }
 
   return data
@@ -16,6 +12,19 @@ export const login = async ({ correo, password }) => {
 
 export const register = async (payload) => {
   const { data } = await api.post('/auth/register', payload)
+  return data
+}
+
+export const requestEmailVerification = async ({ correo }) => {
+  const { data } = await api.post('/auth/email-verification/request', { correo })
+  return data
+}
+
+export const confirmEmailVerification = async ({ correo, codigo }) => {
+  const { data } = await api.post('/auth/email-verification/confirm', {
+    correo,
+    codigo,
+  })
   return data
 }
 

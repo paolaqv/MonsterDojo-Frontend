@@ -3,14 +3,21 @@ import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import '@/assets/css/userforms.css'
 import logo from '@/assets/images/logo.png'
-import { register } from '@/services/auth.service'
-
+import {
+  register,
+  requestEmailVerification,
+  confirmEmailVerification,
+} from '@/services/auth.service'
 const router = useRouter()
 const menuOpen = ref(false)
 const registerError = ref('')
-
+const registerMessage = ref('')
+const verificationLoading = ref(false)
+const verificationSent = ref(false)
+const correoVerificado = ref(false)
 const form = ref({
   correo: '',
+  codigo_verificacion: '',
   nombre: '',
   primer_apellido: '',
   segundo_apellido: '',
@@ -22,6 +29,7 @@ const form = ref({
 const errors = ref({
   correo: '',
   nombre: '',
+  codigo_verificacion: '',
   primer_apellido: '',
   segundo_apellido: '',
   telefono: '',
@@ -60,8 +68,8 @@ const validateForm = () => {
     confirmPassword: '',
   }
 
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i
-  const phoneRegex = /^\d+$/
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/  
+const phoneRegex = /^\d+$/
   const password = form.value.password || ''
 
   const hasMinLength = password.length >= 12
@@ -71,7 +79,7 @@ const validateForm = () => {
   const hasSpecialChar = /[^A-Za-z0-9]/.test(password)
 
   if (!emailRegex.test(form.value.correo.trim())) {
-    errors.value.correo = 'El correo debe ser una dirección válida con dominio @gmail.com.'
+    errors.value.correo = 'Ingresa un correo válido.'
     valid = false
   }
 
@@ -100,8 +108,77 @@ const validateForm = () => {
     errors.value.confirmPassword = 'Las contraseñas no coinciden.'
     valid = false
   }
+  if (!correoVerificado.value) {
+  errors.value.correo = 'Debes verificar tu correo antes de registrarte.'
+  valid = false
+}
 
   return valid
+}
+const getErrorMessage = (error, fallback) =>
+  error?.normalizedMessage ||
+  error?.response?.data?.error?.message ||
+  error?.response?.data?.detail ||
+  fallback
+
+const sendVerificationCode = async () => {
+  try {
+    registerError.value = ''
+    registerMessage.value = ''
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const correo = form.value.correo.trim().toLowerCase()
+
+    if (!emailRegex.test(correo)) {
+      errors.value.correo = 'Ingresa un correo válido.'
+      return
+    }
+
+    verificationLoading.value = true
+
+    await requestEmailVerification({ correo })
+
+    verificationSent.value = true
+    correoVerificado.value = false
+    registerMessage.value = 'Código enviado al correo ingresado.'
+  } catch (error) {
+    registerError.value = getErrorMessage(
+      error,
+      'No se pudo enviar el código de verificación.'
+    )
+  } finally {
+    verificationLoading.value = false
+  }
+}
+
+const verifyEmailCode = async () => {
+  try {
+    registerError.value = ''
+    registerMessage.value = ''
+
+    if (!form.value.codigo_verificacion.trim()) {
+      errors.value.codigo_verificacion = 'Ingresa el código recibido.'
+      return
+    }
+
+    verificationLoading.value = true
+
+    await confirmEmailVerification({
+      correo: form.value.correo.trim().toLowerCase(),
+      codigo: form.value.codigo_verificacion.trim(),
+    })
+
+    correoVerificado.value = true
+    registerMessage.value = 'Correo verificado correctamente.'
+  } catch (error) {
+    correoVerificado.value = false
+    registerError.value = getErrorMessage(
+      error,
+      'No se pudo verificar el código.'
+    )
+  } finally {
+    verificationLoading.value = false
+  }
 }
 
 const handleRegister = async () => {
@@ -115,6 +192,7 @@ const handleRegister = async () => {
       primer_apellido: form.value.primer_apellido.trim(),
       segundo_apellido: form.value.segundo_apellido.trim() || null,
       correo: form.value.correo.trim().toLowerCase(),
+      codigo_verificacion: form.value.codigo_verificacion.trim(),
       telefono: form.value.telefono ? Number(String(form.value.telefono).trim()) : null,
       password: form.value.password,
       rol_id_rol: 'cliente',
@@ -123,7 +201,10 @@ const handleRegister = async () => {
     router.push('/login')
   } catch (error) {
     registerError.value =
-      error?.response?.data?.detail || 'No se pudo registrar el usuario.'
+      error?.normalizedMessage ||
+      error?.response?.data?.error?.message ||
+      error?.response?.data?.detail ||
+      'No se pudo registrar el usuario.'
   }
 }
 </script>
@@ -156,12 +237,48 @@ const handleRegister = async () => {
               v-model="form.correo"
               type="email"
               required
-              placeholder="usuario@gmail.com"
+              :readonly="correoVerificado"
+              placeholder="usuario@gmail.com / usuario@hotmail.com / usuario@ucb.edu.bo"
             />
             <small class="input-help">
-              Ejemplo: usuario@gmail.com. Solo se permiten correos con dominio @gmail.com.
+              Puedes usar cualquier correo válido. Se enviará un código para verificarlo.
             </small>
             <span class="error-message">{{ errors.correo }}</span>
+          </div>
+
+          <div class="input-container">
+            <button
+              type="button"
+              :disabled="verificationLoading || correoVerificado"
+              @click="sendVerificationCode"
+            >
+              {{ verificationSent ? 'Reenviar código' : 'Enviar código' }}
+            </button>
+          </div>
+
+          <div v-if="verificationSent" class="input-container">
+            <label>Código de verificación</label>
+            <input
+              v-model="form.codigo_verificacion"
+              type="text"
+              maxlength="6"
+              placeholder="123456"
+              :readonly="correoVerificado"
+            />
+
+            <button
+              type="button"
+              :disabled="verificationLoading || correoVerificado"
+              @click="verifyEmailCode"
+            >
+              Verificar correo
+            </button>
+
+            <span class="error-message">{{ errors.codigo_verificacion }}</span>
+          </div>
+
+          <div v-if="registerMessage" class="success-message">
+            {{ registerMessage }}
           </div>
 
           <div class="input-container">
