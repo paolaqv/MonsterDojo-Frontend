@@ -121,7 +121,6 @@ const applyUserData = () => {
   userForm.primer_apellido = props.userData.primer_apellido || ''
   userForm.segundo_apellido = props.userData.segundo_apellido || ''
   userForm.correo = props.userData.correo || ''
-  userForm.correo = props.userData.correo || ''
   userForm.correo_contacto = props.userData.correo_contacto || ''
   userForm.codigo_verificacion = ''
   userForm.telefono = props.userData.telefono ?? ''
@@ -364,7 +363,7 @@ if (!/^\d{6}$/.test(codigo)) {
 }
 
   correoVerificado.value = true
-  verificationMessage.value = 'Código ingresado. Se validará al crear el usuario.'
+  verificationMessage.value = 'Código ingresado. Se validará al registrar el usuario.'
 }
 const closePopup = () => {
   resetForm()
@@ -503,7 +502,7 @@ const saveUser = () => {
                   :disabled="verificationLoading || correoVerificado"
                   @click="confirmVerificationCode"
                 >
-                  Verificar correo
+                  Confirmar código ingresado
                 </button>
               </div>
 
