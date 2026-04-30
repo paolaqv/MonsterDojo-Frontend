@@ -15,6 +15,19 @@ export const register = async (payload) => {
   return data
 }
 
+export const requestEmailVerification = async ({ correo }) => {
+  const { data } = await api.post('/auth/email-verification/request', { correo })
+  return data
+}
+
+export const confirmEmailVerification = async ({ correo, codigo }) => {
+  const { data } = await api.post('/auth/email-verification/confirm', {
+    correo,
+    codigo,
+  })
+  return data
+}
+
 // =========================================================
 // NUEVO: cambio obligatorio
 // =========================================================
