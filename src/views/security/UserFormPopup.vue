@@ -55,7 +55,15 @@ const verificationSent = ref(false)
 const correoVerificado = ref(false)
 const verificationMessage = ref('')
 const verificationError = ref('')
-
+const errors = reactive({
+  nombre: '',
+  primer_apellido: '',
+  segundo_apellido: '',
+  telefono: '',
+  correo_contacto: '',
+  codigo_verificacion: '',
+  rol_id_rol: '',
+})
 const sanitize = (value) =>
   (value || '')
     .normalize('NFD')
@@ -188,6 +196,9 @@ if (currentStep.value === 1) {
 })
 
 const nextStep = () => {
+  if (currentStep.value === 0 && !validateStepZero()) return
+  if (currentStep.value === 1 && !validateStepOne()) return
+
   if (!canGoNext.value) return
   if (currentStep.value < 2) currentStep.value++
 }
@@ -202,7 +213,106 @@ const getErrorMessage = (error, fallback) =>
   fallback
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const nameRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/
+const phoneRegex = /^[0-9]{7,10}$/
 
+const clearErrors = () => {
+  errors.nombre = ''
+  errors.primer_apellido = ''
+  errors.segundo_apellido = ''
+  errors.telefono = ''
+  errors.correo_contacto = ''
+  errors.codigo_verificacion = ''
+  errors.rol_id_rol = ''
+}
+
+const validateStepZero = () => {
+  clearErrors()
+
+  let valid = true
+
+  const nombre = userForm.nombre.trim()
+  const primerApellido = userForm.primer_apellido.trim()
+  const segundoApellido = userForm.segundo_apellido.trim()
+  const telefono = String(userForm.telefono).trim()
+  const correoContacto = userForm.correo_contacto.trim().toLowerCase()
+
+  if (!nombre) {
+    errors.nombre = 'El nombre es obligatorio.'
+    valid = false
+  } else if (nombre.length < 2) {
+    errors.nombre = 'El nombre debe tener al menos 2 caracteres.'
+    valid = false
+  } else if (!nameRegex.test(nombre)) {
+    errors.nombre = 'El nombre solo debe contener letras y espacios.'
+    valid = false
+  }
+
+  if (!primerApellido) {
+    errors.primer_apellido = 'El primer apellido es obligatorio.'
+    valid = false
+  } else if (primerApellido.length < 2) {
+    errors.primer_apellido = 'El primer apellido debe tener al menos 2 caracteres.'
+    valid = false
+  } else if (!nameRegex.test(primerApellido)) {
+    errors.primer_apellido = 'El primer apellido solo debe contener letras y espacios.'
+    valid = false
+  }
+
+  if (segundoApellido && !nameRegex.test(segundoApellido)) {
+    errors.segundo_apellido = 'El segundo apellido solo debe contener letras y espacios.'
+    valid = false
+  }
+
+  if (!telefono) {
+    errors.telefono = 'El teléfono es obligatorio.'
+    valid = false
+  } else if (!phoneRegex.test(telefono)) {
+    errors.telefono = 'El teléfono debe tener entre 7 y 10 dígitos numéricos.'
+    valid = false
+  }
+
+  if (!props.isEditing) {
+    if (!correoContacto) {
+      errors.correo_contacto = 'El correo de contacto es obligatorio.'
+      valid = false
+    } else if (!emailRegex.test(correoContacto)) {
+      errors.correo_contacto = 'Ingresa un correo válido.'
+      valid = false
+    }
+
+    if (!verificationSent.value) {
+      errors.correo_contacto = 'Debes enviar el código de verificación.'
+      valid = false
+    }
+
+    if (!userForm.codigo_verificacion.trim()) {
+      errors.codigo_verificacion = 'Debes ingresar el código de verificación.'
+      valid = false
+    } else if (!/^\d{6}$/.test(userForm.codigo_verificacion.trim())) {
+      errors.codigo_verificacion = 'El código debe tener 6 dígitos.'
+      valid = false
+    }
+
+    if (!correoVerificado.value) {
+      errors.codigo_verificacion = 'Debes verificar el código antes de continuar.'
+      valid = false
+    }
+  }
+
+  return valid
+}
+
+const validateStepOne = () => {
+  errors.rol_id_rol = ''
+
+  if (!userForm.rol_id_rol.trim()) {
+    errors.rol_id_rol = 'Debes seleccionar un rol.'
+    return false
+  }
+
+  return true
+}
 const sendVerificationCode = async () => {
   try {
     verificationError.value = ''
@@ -211,15 +321,17 @@ userForm.codigo_verificacion = ''
 correoVerificado.value = false
     const correo = userForm.correo_contacto.trim().toLowerCase()
 
-    if (!emailRegex.test(correo)) {
-      verificationError.value = 'Ingresa un correo real válido.'
-      return
-    }
+if (!emailRegex.test(correo)) {
+  errors.correo_contacto = 'Ingresa un correo válido.'
+  verificationError.value = 'Ingresa un correo real válido.'
+  return
+}
 
     verificationLoading.value = true
 
     await requestEmailVerification({ correo })
-
+    errors.correo_contacto = ''
+    errors.codigo_verificacion = ''
     verificationSent.value = true
     correoVerificado.value = false
     verificationMessage.value = 'Código enviado al correo de contacto.'
@@ -239,15 +351,17 @@ const confirmVerificationCode = () => {
 
   const codigo = userForm.codigo_verificacion.trim()
 
-  if (!codigo) {
-    verificationError.value = 'Ingresa el código de verificación.'
-    return
-  }
+if (!codigo) {
+  errors.codigo_verificacion = 'Ingresa el código de verificación.'
+  verificationError.value = 'Ingresa el código de verificación.'
+  return
+}
 
-  if (!/^\d{6}$/.test(codigo)) {
-    verificationError.value = 'El código debe tener 6 dígitos.'
-    return
-  }
+if (!/^\d{6}$/.test(codigo)) {
+  errors.codigo_verificacion = 'El código debe tener 6 dígitos.'
+  verificationError.value = 'El código debe tener 6 dígitos.'
+  return
+}
 
   correoVerificado.value = true
   verificationMessage.value = 'Código ingresado. Se validará al crear el usuario.'
@@ -309,21 +423,37 @@ const saveUser = () => {
             <div class="form-group">
               <label>Nombre</label>
               <input v-model="userForm.nombre" type="text" placeholder="Nombre" />
+              <span v-if="errors.nombre" class="error-message">
+  {{ errors.nombre }}
+</span>
             </div>
 
             <div class="form-group">
               <label>Primer apellido</label>
               <input v-model="userForm.primer_apellido" type="text" placeholder="Primer apellido" />
+              <span v-if="errors.primer_apellido" class="error-message">
+  {{ errors.primer_apellido }}
+</span>
             </div>
 
             <div class="form-group">
               <label>Segundo apellido</label>
               <input v-model="userForm.segundo_apellido" type="text" placeholder="Segundo apellido" />
+              <span v-if="errors.segundo_apellido" class="error-message">
+  {{ errors.segundo_apellido }}
+</span>
             </div>
 
             <div class="form-group">
               <label>Teléfono</label>
-              <input v-model="userForm.telefono" type="text" placeholder="70000000" />
+<input
+  v-model="userForm.telefono"
+  type="text"
+  maxlength="10"
+  placeholder="70000000"
+/>              <span v-if="errors.telefono" class="error-message">
+  {{ errors.telefono }}
+</span>
             </div>
               <div class="form-group">
                 <label>Correo real de contacto</label>
@@ -336,6 +466,9 @@ const saveUser = () => {
                 <small>
                   A este correo se enviará el código de verificación y las credenciales de acceso.
                 </small>
+                <span v-if="errors.correo_contacto" class="error-message">
+  {{ errors.correo_contacto }}
+</span>
               </div>
 
               <div v-if="!isEditing" class="form-group">
@@ -359,6 +492,9 @@ const saveUser = () => {
                   placeholder="123456"
                   :readonly="correoVerificado"
                 />
+                <span v-if="errors.codigo_verificacion" class="error-message">
+  {{ errors.codigo_verificacion }}
+</span>
 
                 <button
                   v-wave
@@ -397,6 +533,9 @@ const saveUser = () => {
                   {{ role.nombre }} ({{ role.id_rol }})
                 </option>
               </select>
+              <span v-if="errors.rol_id_rol" class="error-message">
+  {{ errors.rol_id_rol }}
+</span>
             </div>
 
 
@@ -513,7 +652,7 @@ const saveUser = () => {
           v-wave
           type="button"
           class="primary-btn"
-          :disabled="!canGoNext"
+          :disabled="false"
           @click="nextStep"
         >
           Siguiente

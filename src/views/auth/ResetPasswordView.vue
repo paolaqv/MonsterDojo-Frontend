@@ -70,9 +70,12 @@ const handleResetPassword = async () => {
           <p>Ingresa el correo con el que te registraste en el sistema.</p>
 
           <div class="input-container">
-            <label for="email">Correo electrónico</label>
+            <label for="email">Correo de contacto registrado</label>
             <input id="email" v-model="email" type="email" required />
           </div>
+          <small class="input-help">
+          Ingresa el correo de contacto asociado a tu cuenta.
+</small>
 
           <div v-if="errorMessage" class="error-message">
             {{ errorMessage }}
