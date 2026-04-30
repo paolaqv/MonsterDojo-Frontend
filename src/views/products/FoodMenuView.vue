@@ -1,20 +1,15 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import '@/assets/css/food-menu.css'
-import logo from '@/assets/images/logo.png'
+import UserNavbar from '@/components/navigation/UserNavbar.vue'
 import { getProductCategories, getProducts } from '@/services/products.service'
 
 const router = useRouter()
 
-const menuOpen = ref(false)
 const categorias = ref([])
 const productosPorCategoria = ref({})
 const errorMessage = ref('')
-
-const toggleMenu = () => {
-  menuOpen.value = !menuOpen.value
-}
 
 const normalizeImage = (imagen) => {
   if (!imagen) return ''
@@ -114,24 +109,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="navbar">
-      <div class="nav-logo">
-        <img :src="logo" alt="Monster Dojo" />
-      </div>
-
-      <button class="menu-toggle" @click="toggleMenu">
-        <span class="fas fa-bars"></span>
-      </button>
-
-      <div class="navbar-right" :class="{ active: menuOpen }">
-        <RouterLink to="/inicio_usuario">Home</RouterLink>
-        <RouterLink to="/food-menu">Menu</RouterLink>
-        <RouterLink to="/game-menu">Productos</RouterLink>
-        <RouterLink to="/user_reservations">Reservas</RouterLink>
-        <RouterLink to="/ver_pedidos">Pedidos</RouterLink>
-        <RouterLink to="/perfil_user"><i class="fas fa-user"></i></RouterLink>
-      </div>
-    </div>
+    <UserNavbar />
 
     <div class="container">
       <div v-if="errorMessage" class="error-message">

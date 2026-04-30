@@ -65,12 +65,17 @@ const validateForm = () => {
 }
 
 const handleSubmit = async () => {
-  if (!validateForm()) return
+  errors.value.phone = ''
+  generalError.value = ''
+  successMessage.value = ''
+
+  const phoneRegex = /^\d+$/
+  if (!phoneRegex.test(form.value.phone)) {
+    errors.value.phone = 'Por favor ingresa un número de teléfono válido. Solo se permiten números.'
+    return
+  }
 
   try {
-    generalError.value = ''
-    successMessage.value = ''
-
     const updatedUser = await updateCurrentUser({
       nombre: form.value.name.trim(),
       correo: form.value.email.trim(),
@@ -78,7 +83,7 @@ const handleSubmit = async () => {
     })
 
     localStorage.setItem('user', JSON.stringify(updatedUser))
-    successMessage.value = 'Perfil actualizado correctamente.'
+    successMessage.value = 'Teléfono actualizado correctamente.'
   } catch (error) {
     generalError.value =
       error?.response?.data?.detail || 'No se pudieron guardar los cambios.'
@@ -141,27 +146,23 @@ onMounted(async () => {
           <div class="input-container">
             <label for="name">Nombre</label>
             <div class="input-with-icon">
-              <input id="name" v-model="form.name" type="text" name="name" required />
-              <i class="fas fa-edit"></i>
-              <span id="error-name" class="error-message">{{ errors.name }}</span>
+              <input id="name" v-model="form.name" type="text" name="name" readonly />
             </div>
           </div>
 
           <div class="input-container">
             <label for="email">Correo Electrónico</label>
             <div class="input-with-icon">
-              <input id="email" v-model="form.email" type="text" name="email" required />
-              <span id="error-email" class="error-message">{{ errors.email }}</span>
-              <i class="fas fa-edit"></i>
+              <input id="email" v-model="form.email" type="text" name="email" readonly />
             </div>
           </div>
 
           <div class="input-container">
             <label for="phone">Teléfono</label>
             <div class="input-with-icon">
-              <input id="phone" v-model="form.phone" type="phone" name="phone" required />
-              <span id="error-phone" class="error-message">{{ errors.phone }}</span>
+              <input id="phone" v-model="form.phone" type="text" name="phone" required />
               <i class="fas fa-edit"></i>
+              <span id="error-phone" class="error-message">{{ errors.phone }}</span>
             </div>
           </div>
 

@@ -1,9 +1,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import '@/assets/css/form-reserva.css'
-import logo from '@/assets/images/logo.png'
+import UserNavbar from '@/components/navigation/UserNavbar.vue'
 
 import {
   getReservationById,
@@ -16,7 +16,6 @@ import { getGames } from '@/services/games.service'
 const route = useRoute()
 const router = useRouter()
 
-const menuOpen = ref(false)
 const loading = ref(false)
 const saving = ref(false)
 const errorMessage = ref('')
@@ -39,10 +38,6 @@ const juegos = ref([])
 const detalleReservas = ref([])
 const productosSeleccionados = ref([])
 const selectedJuegoId = ref(null)
-
-const toggleMenu = () => {
-  menuOpen.value = !menuOpen.value
-}
 
 const total = computed(() => {
   return productosSeleccionados.value
@@ -306,24 +301,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="navbar">
-      <div class="nav-logo">
-        <img :src="logo" alt="Monster Dojo" />
-      </div>
-
-      <button class="menu-toggle" type="button" @click="toggleMenu">
-        <span class="fas fa-bars"></span>
-      </button>
-
-      <div class="navbar-right" :class="{ active: menuOpen }">
-        <RouterLink to="/inicio_usuario">Home</RouterLink>
-        <RouterLink to="/food-menu">Menu</RouterLink>
-        <RouterLink to="/game-menu">Productos</RouterLink>
-        <RouterLink to="/user_reservation">Reservas</RouterLink>
-        <RouterLink to="/ver_pedidos">Pedidos</RouterLink>
-        <RouterLink to="/perfil_user"><i class="fas fa-user"></i></RouterLink>
-      </div>
-    </div>
+    <UserNavbar />
 
     <div class="container">
       <div class="form-section">

@@ -37,7 +37,7 @@ const options = computed(() => {
   if (hasRole('encargadoSeguridad')) {
     items.push({
       key: 'politicas-password',
-      label: 'Gestion deContraseñas',
+      label: 'Gestión de Contraseñas',
       to: '/politicas-contrasena',
       icon: 'fa-solid fa-key',
     })
