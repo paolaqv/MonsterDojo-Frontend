@@ -69,7 +69,7 @@ const validateForm = () => {
   }
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/  
-const phoneRegex = /^\d+$/
+const phoneRegex = /^[\d\s\-+]+$/ // TOLERANCIA: Permite espacios y guiones para limpiarlos
   const password = form.value.password || ''
 
   const hasMinLength = password.length >= 12
@@ -187,13 +187,17 @@ const handleRegister = async () => {
   try {
     registerError.value = ''
 
+    // TOLERANCIA: Limpiar el teléfono para enviar solo los números reales
+    const rawPhone = String(form.value.telefono).trim()
+    const cleanPhone = rawPhone.replace(/\D/g, '')
+
     await register({
       nombre: form.value.nombre.trim(),
       primer_apellido: form.value.primer_apellido.trim(),
       segundo_apellido: form.value.segundo_apellido.trim() || null,
       correo: form.value.correo.trim().toLowerCase(),
       codigo_verificacion: form.value.codigo_verificacion.trim(),
-      telefono: form.value.telefono ? Number(String(form.value.telefono).trim()) : null,
+      telefono: cleanPhone ? Number(cleanPhone) : null,
       password: form.value.password,
       rol_id_rol: 'cliente',
     })
