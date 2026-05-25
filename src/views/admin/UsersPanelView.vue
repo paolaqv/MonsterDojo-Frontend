@@ -26,6 +26,13 @@ import {
 } from '@/services/roles.service'
 
 const authStore = useAuthStore()
+const canManageUsers = computed(() => {
+  return authStore.hasPermission('gestionar_usuarios')
+})
+
+const canManageRoles = computed(() => {
+  return authStore.hasPermission('gestionar_roles')
+})
 const menuOpen = ref(false)
 const search = ref('')
 const users = ref([])
@@ -135,6 +142,8 @@ const saveUser = async (userData) => {
     if (isEditingUser.value) {
       await updateSecurityUser(userData.id, {
         nombre: userData.nombre,
+        primer_apellido: userData.primer_apellido,
+        segundo_apellido: userData.segundo_apellido || null,
         correo: userData.correo,
         telefono: userData.telefono ? Number(userData.telefono) : null,
         rol_id_rol: userData.rol_id_rol,
@@ -211,7 +220,8 @@ const getRoleAccessSummary = (role) => {
   const permisos = role.permisos || []
 
   if (permisos.includes('ver_usuarios')) accesses.push('Ver usuarios')
-  if (permisos.includes('gestionar_usuarios_roles')) accesses.push('Gestión usuarios y roles')
+  if (permisos.includes('gestionar_usuarios')) {accesses.push('Gestión de usuarios')}
+  if (permisos.includes('gestionar_roles')) {accesses.push('Gestión de roles y accesos')}
   if (permisos.includes('ver_pedidos_detalle')) accesses.push('Ver pedidos y detalle')
   if (permisos.includes('gestionar_pedidos')) accesses.push('Gestión pedidos')
   if (permisos.includes('ver_productos')) accesses.push('Ver productos')
@@ -223,8 +233,12 @@ const getRoleAccessSummary = (role) => {
   if (permisos.includes('ver_reservas_detalle')) accesses.push('Ver reservas y detalle')
   if (permisos.includes('crear_reservas')) accesses.push('Crear reservas')
   if (permisos.includes('gestionar_reservas')) accesses.push('Gestión reservas')
+  if (permisos.includes('ver_auditoria')) {accesses.push('Ver auditoría')}
+  if (permisos.includes('ver_politica_contrasenas')) {accesses.push('Ver política de contraseñas')}
+  if (permisos.includes('gestionar_politica_contrasenas')) {accesses.push('Gestión de política de contraseñas')}
 
   return accesses
+
 }
 
 const openNewRolePopup = () => {
@@ -248,7 +262,11 @@ const saveRole = async (roleData) => {
   try {
     const permissionMap = {
       verUsuarios: 'ver_usuarios',
-      gestionarUsuariosRoles: 'gestionar_usuarios_roles',
+      gestionarUsuarios: 'gestionar_usuarios',
+      gestionarRoles: 'gestionar_roles',      
+      verAuditoria: 'ver_auditoria',
+      verPoliticaContrasenas: 'ver_politica_contrasenas',
+      gestionarPoliticaContrasenas: 'gestionar_politica_contrasenas',
       verPedidos: 'ver_pedidos_detalle',
       gestionarPedidos: 'gestionar_pedidos',
       verProductos: 'ver_productos',
@@ -412,9 +430,10 @@ const loadRoles = async () => {
   }
 }
 
-onMounted(() => {
-  loadUsers()
-  loadRoles()
+onMounted(async() => {
+  await authStore.refreshCurrentUser()
+  await loadUsers()
+  await loadRoles()
 })
 
 const showEditTab = (n) => {
@@ -544,6 +563,7 @@ const confirmDelete = (userId) => {
           Usuarios
         </button>
         <button
+          v-if="canManageRoles"
           v-wave
           type="button"
           :class="{ active: activeTab === 'roles' }"
@@ -561,8 +581,12 @@ const confirmDelete = (userId) => {
               <button type="submit">Buscar <i class="fa-solid fa-search"></i></button>
             </div>
           </form>
-
-          <button type="button" class="new-user-btn" @click="openNewUserPopup">
+          <button
+            v-if="canManageUsers"
+            type="button"
+            class="new-user-btn"
+            @click="openNewUserPopup"
+          >
             <i class="fa-solid fa-user-plus"></i> Nuevo usuario
           </button>
         </div>
@@ -586,19 +610,21 @@ const confirmDelete = (userId) => {
                 <td>{{ user.telefono }}</td>
                 <td>{{ getUserRoleLabel(user) }}</td>
                 <td>
-                  <div class="user-actions">
-                    <button class="editUserBtn" @click="openEditUserPopup(user.id_usuario)">
-                      <i class="fa-solid fa-edit"></i>
-                    </button>
+                <div v-if="canManageUsers" class="user-actions">
+                  <button class="editUserBtn" @click="openEditUserPopup(user.id_usuario)">
+                    <i class="fa-solid fa-edit"></i>
+                  </button>
 
-                    <button class="mailUserBtn" @click="handleSendCredentials(user)">
-                      <i class="fa-solid fa-envelope"></i>
-                    </button>
+                  <button class="mailUserBtn" @click="handleSendCredentials(user)">
+                    <i class="fa-solid fa-envelope"></i>
+                  </button>
 
-                    <button class="deleteUserBtn" @click="confirmDelete(user.id_usuario)">
-                      <i class="fa-solid fa-trash"></i>
-                    </button>
-                  </div>
+                  <button class="deleteUserBtn" @click="confirmDelete(user.id_usuario)">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+
+                <span v-else>Solo lectura</span>
                 </td>
               </tr>
 
@@ -693,6 +719,7 @@ const confirmDelete = (userId) => {
       </div>
 
       <RoleFormPopup
+        v-if="canManageRoles"
         :show="showRolePopup"
         :role-data="selectedRole"
         :is-editing="isEditingRole"
@@ -701,6 +728,7 @@ const confirmDelete = (userId) => {
       />
 
       <UserFormPopup
+        v-if="canManageUsers"
         :show="showUserPopup"
         :user-data="selectedUser"
         :roles="roles"

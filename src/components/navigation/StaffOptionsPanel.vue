@@ -10,7 +10,7 @@ defineProps({
   },
 })
 
-const { hasPermission, hasRole } = usePermissions()
+const { hasPermission } = usePermissions()
 
 const options = computed(() => {
   const items = []
@@ -34,7 +34,7 @@ const options = computed(() => {
     items.push({ key: 'pedidos', label: 'Pedidos', to: '/pedidos_panel', icon: 'fa-solid fa-clipboard' })
   }
 
-  if (hasRole('encargadoSeguridad')) {
+  if (hasPermission('ver_politica_contrasenas')) {
     items.push({
       key: 'politicas-password',
       label: 'Gestión de Contraseñas',

@@ -9,6 +9,8 @@ import {
   Gamepad2,
   Armchair,
   CalendarCheck2,
+  ScrollText,
+  KeyRound,
   Sparkles,
   CheckCircle2,
 } from 'lucide-vue-next'
@@ -38,7 +40,13 @@ const roleForm = reactive({
   activo: true,
   accesos: {
     verUsuarios: false,
-    gestionarUsuariosRoles: false,
+    gestionarUsuarios: false,
+    gestionarRoles: false,
+
+    verAuditoria: false,
+
+    verPoliticaContrasenas: false,
+    gestionarPoliticaContrasenas: false,
 
     verPedidos: false,
     gestionarPedidos: false,
@@ -86,7 +94,14 @@ Object.keys(roleForm.accesos).forEach((key) => {
 
 const permissionMap = {
   ver_usuarios: 'verUsuarios',
-  gestionar_usuarios_roles: 'gestionarUsuariosRoles',
+  gestionar_usuarios: 'gestionarUsuarios',
+  gestionar_roles: 'gestionarRoles',
+
+  ver_auditoria: 'verAuditoria',
+
+  ver_politica_contrasenas: 'verPoliticaContrasenas',
+  gestionar_politica_contrasenas: 'gestionarPoliticaContrasenas',
+
   ver_pedidos_detalle: 'verPedidos',
   gestionar_pedidos: 'gestionarPedidos',
   ver_productos: 'verProductos',
@@ -117,9 +132,18 @@ watch(
   }
 )
 
-watch(() => roleForm.accesos.gestionarUsuariosRoles, (value) => {
+watch(() => roleForm.accesos.gestionarPoliticaContrasenas, (value) => {
+  if (value) roleForm.accesos.verPoliticaContrasenas = true
+})
+
+watch(() => roleForm.accesos.gestionarUsuarios, (value) => {
   if (value) roleForm.accesos.verUsuarios = true
 })
+
+watch(() => roleForm.accesos.gestionarRoles, (value) => {
+  if (value) roleForm.accesos.verUsuarios = true
+})
+
 watch(() => roleForm.accesos.gestionarPedidos, (value) => {
   if (value) roleForm.accesos.verPedidos = true
 })
@@ -140,9 +164,13 @@ watch(() => roleForm.accesos.gestionarReservas, (value) => {
 
 const selectedAccesses = computed(() => {
   const labels = []
+  if (roleForm.accesos.verAuditoria) {labels.push('Ver auditoría')}
+  if (roleForm.accesos.verPoliticaContrasenas) {labels.push('Ver política de contraseñas')}
+  if (roleForm.accesos.gestionarPoliticaContrasenas) {labels.push('Gestión de política de contraseñas')}
 
   if (roleForm.accesos.verUsuarios) labels.push('Ver usuarios')
-  if (roleForm.accesos.gestionarUsuariosRoles) labels.push('Gestión de usuarios y roles')
+  if (roleForm.accesos.gestionarUsuarios) labels.push('Gestión de usuarios')
+  if (roleForm.accesos.gestionarRoles) labels.push('Gestión de roles')
 
   if (roleForm.accesos.verPedidos) labels.push('Ver pedidos y detalles')
   if (roleForm.accesos.gestionarPedidos) labels.push('Gestión de pedidos')
@@ -168,9 +196,20 @@ const summaryByModule = computed(() => {
 
   return [
     {
-      title: 'Usuarios y roles',
+      title: 'Usuarios',
       icon: Users,
-      value: a.gestionarUsuariosRoles ? 'Gestión' : a.verUsuarios ? 'Ver' : 'Sin acceso',
+      value: a.gestionarUsuarios
+        ? 'Gestión'
+        : a.verUsuarios
+          ? 'Ver'
+          : 'Sin acceso',
+    },
+    {
+      title: 'Roles y accesos',
+      icon: ShieldCheck,
+      value: a.gestionarRoles
+        ? 'Gestión'
+        : 'Sin acceso',
     },
     {
       title: 'Pedidos',
@@ -198,6 +237,20 @@ const summaryByModule = computed(() => {
       value: a.gestionarReservas ? 'Gestión'  : a.crearReservas
           ? 'Crear' : a.verReservas ? 'Ver' : 'Sin acceso',
     },
+    {
+      title: 'Auditoría',
+      icon: ScrollText,
+      value: a.verAuditoria ? 'Ver' : 'Sin acceso',
+    },
+    {
+      title: 'Política de contraseñas',
+      icon: KeyRound,
+      value: a.gestionarPoliticaContrasenas
+        ? 'Modificar'
+        : a.verPoliticaContrasenas
+          ? 'Ver'
+          : 'Sin acceso',
+    },
   ]
 })
 
@@ -215,8 +268,11 @@ const canGoNext = computed(() => {
 
 const moduleIsActive = (type) => {
   if (type === 'usuarios') {
-    return roleForm.accesos.verUsuarios || roleForm.accesos.gestionarUsuariosRoles
+    return roleForm.accesos.verUsuarios || roleForm.accesos.gestionarUsuarios
   }
+  if (type === 'roles') {
+  return roleForm.accesos.gestionarRoles
+}
   if (type === 'pedidos') {
     return roleForm.accesos.verPedidos || roleForm.accesos.gestionarPedidos
   }
@@ -233,6 +289,14 @@ const moduleIsActive = (type) => {
     return roleForm.accesos.verReservas ||     roleForm.accesos.crearReservas ||
     roleForm.accesos.gestionarReservas
   }
+  if (type === 'auditoria') {
+      return roleForm.accesos.verAuditoria
+    }
+
+    if (type === 'politicaContrasenas') {
+      return roleForm.accesos.verPoliticaContrasenas
+        || roleForm.accesos.gestionarPoliticaContrasenas
+    }
   return false
 }
 
@@ -369,11 +433,72 @@ const saveRole = () => {
               >
                 <div class="permission-card-head">
                   <Users :size="18" />
-                  <h4>Usuarios y roles</h4>
+                  <h4>Usuarios</h4>
                 </div>
-                <p class="permission-description">Control de acceso y gestión del personal.</p>
-                <label><input v-model="roleForm.accesos.verUsuarios" type="checkbox" /> Ver usuarios</label>
-                <label><input v-model="roleForm.accesos.gestionarUsuariosRoles" type="checkbox" /> Gestión de usuarios y roles</label>
+                <p class="permission-description">
+                  Consulta y administración de usuarios del sistema.
+                </p>
+                <label>
+                  <input v-model="roleForm.accesos.verUsuarios" type="checkbox" />
+                  Ver usuarios
+                </label>
+                <label>
+                  <input v-model="roleForm.accesos.gestionarUsuarios" type="checkbox" />
+                  Gestionar usuarios
+                </label>
+              </div>
+
+              <div
+                v-wave
+                class="permission-card interactive-card"
+                :class="{ active: moduleIsActive('roles') }"
+              >
+                <div class="permission-card-head">
+                  <ShieldCheck :size="18" />
+                  <h4>Roles y accesos</h4>
+                </div>
+                <p class="permission-description">
+                  Administración de roles y asignación de permisos.
+                </p>
+                <label>
+                  <input v-model="roleForm.accesos.gestionarRoles" type="checkbox" />
+                  Gestionar roles y accesos
+                </label>
+              </div>
+              <div
+                v-wave
+                class="permission-card interactive-card"
+                :class="{ active: moduleIsActive('auditoria') }"
+              >
+                <div class="permission-card-head">
+                  <ShieldCheck :size="18" />
+                  <h4>Auditoría</h4>
+                </div>
+                <p class="permission-description">
+                  Consulta de registros y actividades realizadas en el sistema.
+                </p>
+                <label>
+                  <input v-model="roleForm.accesos.verAuditoria" type="checkbox" />
+                  Ver auditoría
+                </label>
+              </div>
+
+              <div
+                v-wave
+                class="permission-card interactive-card"
+                :class="{ active: moduleIsActive('politicaContrasenas') }"
+              >
+                <div class="permission-card-head">
+                  <KeyRound :size="18" />
+                  <h4>Política de contraseñas</h4>
+                </div>
+                <p class="permission-description">
+                  Consulta y administración de reglas de seguridad para contraseñas.
+                </p>
+                <label>
+                  <input v-model="roleForm.accesos.gestionarPoliticaContrasenas" type="checkbox" />
+                  Gestionar política de contraseñas
+                </label>
               </div>
 
               <div
@@ -446,6 +571,45 @@ const saveRole = () => {
                 <label>
                 <input v-model="roleForm.accesos.crearReservas" type="checkbox" />Crear reservas</label>
                 <label><input v-model="roleForm.accesos.gestionarReservas" type="checkbox" /> Gestión de reservas</label>
+              </div>
+              <div
+                v-wave
+                class="permission-card interactive-card"
+                :class="{ active: moduleIsActive('auditoria') }"
+              >
+                <div class="permission-card-head">
+                  <ScrollText :size="18" />
+                  <h4>Auditoría</h4>
+                </div>
+                <p class="permission-description">
+                  Consulta de registros y actividades relevantes del sistema.
+                </p>
+                <label>
+                  <input v-model="roleForm.accesos.verAuditoria" type="checkbox" />
+                  Ver auditoría
+                </label>
+              </div>
+
+              <div
+                v-wave
+                class="permission-card interactive-card"
+                :class="{ active: moduleIsActive('politicaContrasenas') }"
+              >
+                <div class="permission-card-head">
+                  <KeyRound :size="18" />
+                  <h4>Política de contraseñas</h4>
+                </div>
+                <p class="permission-description">
+                  Consulta y actualización de las reglas de seguridad de contraseñas.
+                </p>
+                <label>
+                  <input v-model="roleForm.accesos.verPoliticaContrasenas" type="checkbox" />
+                  Ver política de contraseñas
+                </label>
+                <label>
+                  <input v-model="roleForm.accesos.modificarPoliticaContrasenas" type="checkbox" />
+                  Modificar política de contraseñas
+                </label>
               </div>
             </div>
           </div>
