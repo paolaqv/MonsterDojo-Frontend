@@ -95,6 +95,23 @@ const routes = [
     component: SecurityPanelView,
     meta: { roles: ['encargadoSeguridad'] },
   },
+
+
+  // nuevo para las pantalla
+  {
+    path: '/analisis-riesgos',
+    name: 'analisis-riesgos',
+    component: () => import('@/views/security/RiskAnalysisView.vue'),
+    meta: { roles: ['encargadoSeguridad'] },
+  },
+  {
+    path: '/dashboard-riesgos',
+    name: 'dashboard-riesgos',
+    component: () => import('@/views/security/RiskDashboardView.vue'),
+    meta: { roles: ['encargadoSeguridad'] },
+  },
+
+
   {
     path: '/auditoria',
     name: 'auditPanel',
