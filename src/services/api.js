@@ -23,22 +23,30 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
     const method = String(config.method || '').toLowerCase()
+    const isFormData = config.data instanceof FormData
 
-  const isFormData =
-    typeof FormData !== 'undefined' && config.data instanceof FormData
+    /*
+     * El loading se ejecuta para todas las peticiones:
+     * GET, POST, PUT, PATCH y DELETE.
+     */
+    startGlobalLoading()
 
-  if (['post', 'put', 'patch'].includes(method) && config.data && !isFormData) {
-    config.data = sanitizePayload(config.data)
-  }
+    /*
+     * La sanitización solo se aplica a JSON.
+     * No se debe transformar FormData porque contiene el archivo.
+     */
+    if (
+      ['post', 'put', 'patch'].includes(method) &&
+      config.data &&
+      !isFormData
+    ) {
+      config.data = sanitizePayload(config.data)
+    }
 
-  if (isFormData) {
-    delete config.headers['Content-Type']
-  }
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-
+    /*
+     * Para subir archivos, Axios/navegador debe generar
+     * automáticamente multipart/form-data con su boundary.
+     */
     if (isFormData) {
       delete config.headers['Content-Type']
     }
@@ -69,10 +77,6 @@ api.interceptors.response.use(
     const apiMessage = getErrorMessage(error)
     const detail = error?.response?.data?.detail || ''
 
-    /*
-      Esto solo controla mensajes de autenticación.
-      No restringe el loading.
-    */
     const isAuthRoute =
       requestUrl.includes('/auth/login') ||
       requestUrl.includes('/auth/register') ||
