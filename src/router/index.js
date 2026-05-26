@@ -96,11 +96,11 @@ const routes = [
     meta: { roles: ['encargadoSeguridad'] },
   },
   {
- path:"/auditoria",
- name:"auditPanel",
- component:AuditPanelView,
- meta: { roles: ['encargadoSeguridad'] },
-},
+    path: '/auditoria',
+    name: 'auditPanel',
+    component: AuditPanelView,
+    meta: { permissions: ['ver_auditoria'] },
+  },
   {
     path: '/panel-mesero',
     name: 'panel-mesero',
@@ -134,7 +134,7 @@ const routes = [
     path: '/politicas-contrasena',
     name: 'politicas-contrasena',
     component: PasswordPolicyView,
-    meta: { roles: ['encargadoSeguridad'] },
+    meta: { permissions: ['ver_politica_contrasenas'] },
   },
   {
     path: '/change-required-password',

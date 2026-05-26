@@ -143,6 +143,20 @@ const realizarPedido = async () => {
     Swal.fire('Aviso', 'Debes seleccionar al menos un producto.', 'warning')
     return
   }
+  const cantidadesInvalidas = productosSeleccionados.value.some(
+  (producto) =>
+    !Number.isInteger(Number(producto.cantidad)) ||
+    Number(producto.cantidad) < 1
+)
+
+if (cantidadesInvalidas) {
+  Swal.fire(
+    'Aviso',
+    'Las cantidades deben ser números enteros mayores a cero.',
+    'warning'
+  )
+  return
+}
 
   try {
     const payload = productosSeleccionados.value.map((producto) => ({

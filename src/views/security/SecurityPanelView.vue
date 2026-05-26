@@ -17,7 +17,11 @@
           </p>
         </div>
         <div class="audit-access">
-  <router-link to="/auditoria" class="audit-button">
+          <router-link
+            v-if="hasPermission('ver_auditoria')"
+            to="/auditoria"
+            class="audit-button"
+          >
       <span class="audit-icon">🛡</span>
 
       <div class="audit-text">
@@ -36,7 +40,8 @@
 
 <script setup>
 import '@/assets/css/adminpanel.css'
-
+import { usePermissions } from '@/composables/usePermissions'
+const { hasPermission } = usePermissions()
 import StaffNavbar from '@/components/navigation/StaffNavbar.vue'
 import StaffOptionsPanel from '@/components/navigation/StaffOptionsPanel.vue'
 </script>
