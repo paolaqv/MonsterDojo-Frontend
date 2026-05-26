@@ -16,33 +16,22 @@
             Desde este panel puedes gestionar usuarios, roles y las políticas de contraseña del sistema.
           </p>
         </div>
-
-        <!-- nuevo boton -->
-        <div class="audit-access">
-          <router-link to="/analisis-riesgos" class="audit-button">
-            <span class="audit-icon">📊</span>
-            <div class="audit-text">
-              <strong>Análisis de Riesgos</strong>
-              <small>Gestionar matriz de riesgos y controles</small>
-            </div>
-            <span class="audit-arrow">→</span>
-          </router-link>
-        </div>
-
         <div class="audit-access">
           <router-link
             v-if="hasPermission('ver_auditoria')"
             to="/auditoria"
             class="audit-button"
           >
-            <span class="audit-icon">🛡</span>
-            <div class="audit-text">
-              <strong>Bitácora de Auditoría</strong>
-              <small>Consultar eventos críticos y registros del sistema</small>
-            </div>
-            <span class="audit-arrow">→</span>
-          </router-link>
-        </div>
+      <span class="audit-icon">🛡</span>
+
+      <div class="audit-text">
+        <strong>Bitácora de Auditoría</strong>
+        <small>Consultar eventos críticos y registros del sistema</small>
+      </div>
+
+      <span class="audit-arrow">→</span>
+  </router-link>
+</div>
       </div>
     </div>
 

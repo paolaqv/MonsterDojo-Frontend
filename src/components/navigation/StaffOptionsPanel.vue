@@ -43,8 +43,18 @@ const options = computed(() => {
     })
   }
 
+  
+// para el analisis de riesgos, todavia sin permisos
+items.push({ 
+  key: 'analisis-riesgos', 
+  label: 'Análisis de Riesgos', 
+  to: '/analisis-riesgos', 
+  icon: 'fa-solid fa-chart-line' 
+})
+
   return items
 })
+
 </script>
 
 <template>
