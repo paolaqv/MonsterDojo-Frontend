@@ -30,8 +30,14 @@ api.interceptors.request.use(
     */
     startGlobalLoading()
 
-    if (['post', 'put', 'patch'].includes(method) && config.data) {
+    const isFormData = config.data instanceof FormData
+
+    if (['post', 'put', 'patch'].includes(method) && config.data && !isFormData) {
       config.data = sanitizePayload(config.data)
+    }
+
+    if (isFormData) {
+      delete config.headers['Content-Type']
     }
 
     if (token) {

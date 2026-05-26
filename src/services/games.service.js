@@ -29,3 +29,18 @@ export const updateGame = async (gameId, payload) => {
   const { data } = await api.put(`/games/${gameId}`, payload)
   return data
 }
+
+export const uploadGameImage = async (file) => {
+  const formData = new FormData()
+
+  formData.append('file', file)
+  formData.append('tipo', 'juego')
+
+  const { data } = await api.post('/uploads/image', formData, {
+    headers: {
+      'Content-Type': undefined,
+    },
+  })
+
+  return data
+}
