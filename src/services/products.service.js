@@ -29,3 +29,18 @@ export const updateProduct = async (productId, payload) => {
   const { data } = await api.put(`/products/${productId}`, payload)
   return data
 }
+
+export const uploadProductImage = async (file) => {
+  const formData = new FormData()
+
+  formData.append('file', file)
+  formData.append('tipo', 'producto')
+
+  const { data } = await api.post('/uploads/image', formData, {
+    headers: {
+      'Content-Type': undefined,
+    },
+  })
+
+  return data
+}
