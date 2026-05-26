@@ -11,17 +11,20 @@ import { usePermissions } from '@/composables/usePermissions'
 import {
   createGame,
   createGameCategory,
+  deleteGame,
   getGameById,
   getGameCategories,
   getGames,
   updateGame,
 } from '@/services/games.service'
+import { uploadImage } from '@/services/uploads.service'
 
 const { hasPermission, hasRole } = usePermissions()
 
 const canViewGames = computed(() => hasPermission('ver_juegos'))
 const canManageGames = computed(() => hasPermission('gestionar_juegos'))
-const canManageGameCategories = computed(() => hasPermission('gestionar_categorias_juegos'))
+// Las categorias de juegos se administran con el mismo permiso de juegos
+const canManageGameCategories = computed(() => hasPermission('gestionar_juegos'))
 
 const homeRoute = computed(() => {
   if (hasRole('mesero')) return '/panel-mesero'
@@ -51,6 +54,8 @@ const regForm = ref({
   nombre: '',
   descripcion: '',
   precio_alquiler: '',
+  precio_venta: '',
+  disponible_venta: false,
   imagen: null,
   categoria: '',
 })
@@ -60,6 +65,8 @@ const editForm = ref({
   nombre: '',
   descripcion: '',
   precio_alquiler: '',
+  precio_venta: '',
+  disponible_venta: false,
   imagen: null,
   categoria: '',
   imagenActual: '',
@@ -91,18 +98,11 @@ const normalizeImage = (imagen) => {
   return `${apiBase}/${imagen}`
 }
 
-const fileToBase64 = (file) =>
-  new Promise((resolve, reject) => {
-    if (!file) {
-      resolve('')
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
+const uploadAndGetUrl = async (file) => {
+  if (!file) return ''
+  const { url } = await uploadImage(file, 'juego')
+  return url
+}
 
 const loadData = async () => {
   try {
@@ -190,6 +190,8 @@ const clearForm = () => {
     nombre: '',
     descripcion: '',
     precio_alquiler: '',
+    precio_venta: '',
+    disponible_venta: false,
     imagen: null,
     categoria: '',
   }
@@ -201,6 +203,8 @@ const clearEditForm = () => {
     nombre: '',
     descripcion: '',
     precio_alquiler: '',
+    precio_venta: '',
+    disponible_venta: false,
     imagen: null,
     categoria: '',
     imagenActual: '',
@@ -294,13 +298,15 @@ const handleGameSubmit = async (event) => {
   if (!canManageGames.value) return
 
   try {
-    const imagenBase64 = await fileToBase64(regForm.value.imagen)
+    const imagenUrl = await uploadAndGetUrl(regForm.value.imagen)
 
     await createGame({
       nombre: regForm.value.nombre,
       descripcion: regForm.value.descripcion,
       precio_alquiler: Number(regForm.value.precio_alquiler),
-      imagen: imagenBase64,
+      precio_venta: Number(regForm.value.precio_venta || 0),
+      disponible_venta: !!regForm.value.disponible_venta,
+      imagen: imagenUrl,
       categoria_juego_id_catJuego: Number(regForm.value.categoria),
       activo: true,
     })
@@ -352,6 +358,8 @@ const openEditPopup = async (gameId) => {
     editForm.value.nombre = data.nombre
     editForm.value.descripcion = data.descripcion
     editForm.value.precio_alquiler = data.precio_alquiler
+    editForm.value.precio_venta = data.precio_venta ?? 0
+    editForm.value.disponible_venta = !!data.disponible_venta
     editForm.value.categoria =
       data.categoria_juego_id_catJuego ??
       data.categoria_juego?.id_catJuego ??
@@ -379,13 +387,15 @@ const handleEditGameSubmit = async (event) => {
 
   try {
     const nuevaImagen = editForm.value.imagen
-      ? await fileToBase64(editForm.value.imagen)
+      ? await uploadAndGetUrl(editForm.value.imagen)
       : editForm.value.imagenActual
 
     await updateGame(editForm.value.id, {
       nombre: editForm.value.nombre,
       descripcion: editForm.value.descripcion,
       precio_alquiler: Number(editForm.value.precio_alquiler),
+      precio_venta: Number(editForm.value.precio_venta || 0),
+      disponible_venta: !!editForm.value.disponible_venta,
       imagen: nuevaImagen,
       categoria_juego_id_catJuego: Number(editForm.value.categoria),
       activo: editForm.value.activo,
@@ -423,24 +433,14 @@ const confirmDelete = (event, juego) => {
   }).then(async (result) => {
     if (result.isConfirmed) {
       try {
-        await updateGame(juego.id_juego, {
-          nombre: juego.nombre,
-          descripcion: juego.descripcion,
-          precio_alquiler: Number(juego.precio_alquiler),
-          imagen: juego.imagen,
-          categoria_juego_id_catJuego:
-            juego.categoria_juego_id_catJuego ??
-            juego.categoria_juego?.id_catJuego ??
-            juego.categoria_juego?.id_categoria,
-          activo: false,
-        })
+        await deleteGame(juego.id_juego)
 
         Swal.fire('¡Archivado!', 'El juego ha sido archivado.', 'success')
         await loadData()
       } catch (error) {
         Swal.fire({
           title: 'Error',
-          text: 'Hubo un problema al archivar el juego.',
+          text: error?.response?.data?.error?.message || 'Hubo un problema al archivar el juego.',
           icon: 'error',
           confirmButtonText: 'OK',
           customClass: {
@@ -602,146 +602,167 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="showAddGamePopup && canManageGames" class="popup" id="contactPopup">
+    <Teleport to="body">
+    <div
+      v-show="showAddGamePopup && canManageGames"
+      class="popup"
+      id="contactPopup"
+      style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0,0,0,0.6) !important; z-index: 99999 !important; display: flex !important; justify-content: center !important; align-items: center !important;"
+    >
       <div class="popup-content">
         <span class="close-btn" @click="closePopup">&times;</span>
         <img :src="menuImg" alt="Game Icon" class="product-icon" />
         <h2>REGISTRO NUEVO JUEGO</h2>
 
-        <div class="step-indicator">
-          <div class="step-container">
-            <span id="step1" class="step" :class="{ active: currentTab === 0 }" @click="showTab(0)">1</span>
-            <span class="step-line" :class="{ active: currentTab > 0 }"></span>
-            <span id="step2" class="step" :class="{ active: currentTab === 1 }" @click="showTab(1)">2</span>
-            <span class="step-line" :class="{ active: currentTab > 1 }"></span>
-            <span id="step3" class="step" :class="{ active: currentTab === 2 }" @click="showTab(2)">3</span>
-          </div>
-        </div>
-
         <form id="regForm" @submit.prevent="handleGameSubmit">
-          <div v-show="currentTab === 0" class="tab">
-            <div class="form-group">
-              <label for="nombre">Nombre</label>
-              <input id="nombre" v-model="regForm.nombre" type="text" name="nombre" required />
-            </div>
-
-            <div class="form-group">
-              <label for="descripcion">Descripción</label>
-              <input id="descripcion" v-model="regForm.descripcion" type="text" name="descripcion" required />
-            </div>
+          <div class="form-group">
+            <label for="nombre">Nombre</label>
+            <input id="nombre" v-model="regForm.nombre" type="text" maxlength="50" required />
           </div>
 
-          <div v-show="currentTab === 1" class="tab">
-            <div class="form-group">
-              <label for="precio_alquiler">Precio Alquiler</label>
-              <input id="precio_alquiler" v-model="regForm.precio_alquiler" type="number" step="0.01" required />
-            </div>
+          <div class="form-group">
+            <label for="descripcion">Descripción</label>
+            <input id="descripcion" v-model="regForm.descripcion" type="text" maxlength="500" required />
           </div>
 
-          <div v-show="currentTab === 2" class="tab">
-            <div class="form-group">
-              <label for="imagen">Imagen</label>
-              <input
-                id="imagen"
-                type="file"
-                accept="image/png, image/jpeg, image/jpg"
-                required
-                @change="handleRegImageChange"
-              />
-            </div>
+          <div class="form-group">
+            <label for="precio_alquiler">Precio Alquiler</label>
+            <input id="precio_alquiler" v-model="regForm.precio_alquiler" type="number" step="0.01" min="0" max="100000" required />
+          </div>
 
-            <div class="form-group">
-              <label for="categoria">Categoría</label>
-              <select id="categoria" v-model="regForm.categoria" required>
-                <option
-                  v-for="categoria in categorias"
-                  :key="categoria.id_catJuego"
-                  :value="categoria.id_catJuego"
-                >
-                  {{ categoria.nombre }}
-                </option>
-              </select>
-            </div>
+          <div class="form-group">
+            <label for="precio_venta">Precio Venta</label>
+            <input id="precio_venta" v-model="regForm.precio_venta" type="number" step="0.01" min="0" max="100000" required />
+          </div>
 
-            <div class="buttons">
-              <button type="submit">Registrar</button>
-              <button type="button" @click="confirmCancel('regForm')">Cancelar</button>
-            </div>
+          <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+            <input id="disponible_venta" v-model="regForm.disponible_venta" type="checkbox" />
+            <label for="disponible_venta" style="margin:0;">Disponible para venta</label>
+          </div>
+
+          <div class="form-group">
+            <label for="categoria">Categoría</label>
+            <select id="categoria" v-model="regForm.categoria" required>
+              <option disabled value="">Selecciona una categoría</option>
+              <option
+                v-for="categoria in categorias"
+                :key="categoria.id_catJuego"
+                :value="categoria.id_catJuego"
+              >
+                {{ categoria.nombre }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="imagen">Imagen</label>
+            <input
+              id="imagen"
+              type="file"
+              accept="image/png, image/jpeg, image/jpg, image/webp"
+              required
+              @change="handleRegImageChange"
+            />
+          </div>
+
+          <div class="buttons">
+            <button type="submit">Registrar</button>
+            <button type="button" @click="confirmCancel('regForm')">Cancelar</button>
           </div>
         </form>
       </div>
     </div>
+    </Teleport>
 
-    <div v-if="showEditGamePopup && canManageGames" class="popup" id="editPopup">
+    <Teleport to="body">
+    <div
+      v-show="showEditGamePopup && canManageGames"
+      class="popup"
+      id="editPopup"
+      style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0,0,0,0.6) !important; z-index: 99999 !important; display: flex !important; justify-content: center !important; align-items: center !important;"
+    >
       <div class="popup-content">
         <span class="close-btn" @click="closeEditPopup">&times;</span>
         <img :src="editImg" alt="Game Icon" class="product-icon" />
         <h2>EDITAR JUEGO</h2>
 
-        <div class="step-indicator">
-          <div class="step-container">
-            <span id="edit-step1" class="step" :class="{ active: currentEditTab === 0 }" @click="showEditTab(0)">1</span>
-            <span class="step-line" :class="{ active: currentEditTab > 0 }"></span>
-            <span id="edit-step2" class="step" :class="{ active: currentEditTab === 1 }" @click="showEditTab(1)">2</span>
-            <span class="step-line" :class="{ active: currentEditTab > 1 }"></span>
-            <span id="edit-step3" class="step" :class="{ active: currentEditTab === 2 }" @click="showEditTab(2)">3</span>
-          </div>
-        </div>
-
         <form id="editForm" @submit.prevent="handleEditGameSubmit">
-          <div v-show="currentEditTab === 0" class="tab">
-            <div class="form-group">
-              <label for="edit_nombre">Nombre</label>
-              <input id="edit_nombre" v-model="editForm.nombre" type="text" required />
-            </div>
-
-            <div class="form-group">
-              <label for="edit_descripcion">Descripción</label>
-              <input id="edit_descripcion" v-model="editForm.descripcion" type="text" required />
-            </div>
+          <div class="form-group">
+            <label for="edit_nombre">Nombre</label>
+            <input id="edit_nombre" v-model="editForm.nombre" type="text" maxlength="50" required />
           </div>
 
-          <div v-show="currentEditTab === 1" class="tab">
-            <div class="form-group">
-              <label for="edit_precio_alquiler">Precio Alquiler</label>
-              <input id="edit_precio_alquiler" v-model="editForm.precio_alquiler" type="number" step="0.01" required />
-            </div>
+          <div class="form-group">
+            <label for="edit_descripcion">Descripción</label>
+            <input id="edit_descripcion" v-model="editForm.descripcion" type="text" maxlength="500" required />
           </div>
 
-          <div v-show="currentEditTab === 2" class="tab">
-            <div class="form-group">
-              <label for="edit_imagen">Imagen</label>
-              <input
-                id="edit_imagen"
-                type="file"
-                accept="image/png, image/jpeg, image/jpg"
-                @change="handleEditImageChange"
-              />
-            </div>
+          <div class="form-group">
+            <label for="edit_precio_alquiler">Precio Alquiler</label>
+            <input id="edit_precio_alquiler" v-model="editForm.precio_alquiler" type="number" step="0.01" min="0" max="100000" required />
+          </div>
 
-            <div class="form-group">
-              <label for="edit_categoria">Categoría</label>
-              <select id="edit_categoria" v-model="editForm.categoria" required>
-                <option
-                  v-for="categoria in categorias"
-                  :key="categoria.id_catJuego"
-                  :value="categoria.id_catJuego"
-                >
-                  {{ categoria.nombre }}
-                </option>
-              </select>
-            </div>
+          <div class="form-group">
+            <label for="edit_precio_venta">Precio Venta</label>
+            <input id="edit_precio_venta" v-model="editForm.precio_venta" type="number" step="0.01" min="0" max="100000" required />
+          </div>
 
-            <div class="buttons">
-              <button type="submit">Guardar Cambios</button>
-              <button type="button" @click="confirmCancel('editForm')">Cancelar</button>
-            </div>
+          <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+            <input id="edit_disponible_venta" v-model="editForm.disponible_venta" type="checkbox" />
+            <label for="edit_disponible_venta" style="margin:0;">Disponible para venta</label>
+          </div>
+
+          <div class="form-group">
+            <label for="edit_categoria">Categoría</label>
+            <select id="edit_categoria" v-model="editForm.categoria" required>
+              <option disabled value="">Selecciona una categoría</option>
+              <option
+                v-for="categoria in categorias"
+                :key="categoria.id_catJuego"
+                :value="categoria.id_catJuego"
+              >
+                {{ categoria.nombre }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="edit_imagen">Imagen (opcional, deja vacío para mantener la actual)</label>
+            <input
+              id="edit_imagen"
+              type="file"
+              accept="image/png, image/jpeg, image/jpg, image/webp"
+              @change="handleEditImageChange"
+            />
+            <img
+              v-if="editForm.imagenActual && !editForm.imagen"
+              :src="editForm.imagenActual"
+              alt="Imagen actual"
+              style="margin-top:8px; max-width:120px; border-radius:6px;"
+            />
+          </div>
+
+          <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+            <input id="edit_activo" v-model="editForm.activo" type="checkbox" />
+            <label for="edit_activo" style="margin:0;">Juego activo</label>
+          </div>
+
+          <div class="buttons">
+            <button type="submit">Guardar Cambios</button>
+            <button type="button" @click="confirmCancel('editForm')">Cancelar</button>
           </div>
         </form>
       </div>
     </div>
+    </Teleport>
 
-    <div v-if="showCategoryPopup && canManageGameCategories" class="popup" id="categoryPopup">
+    <Teleport to="body">
+    <div
+      v-show="showCategoryPopup && canManageGameCategories"
+      class="popup"
+      id="categoryPopup"
+      style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0,0,0,0.6) !important; z-index: 99999 !important; display: flex !important; justify-content: center !important; align-items: center !important;"
+    >
       <div class="popup-content">
         <span class="close-btn" @click="closeCategoryPopup">&times;</span>
         <img :src="categoryImg" alt="Category Icon" class="product-icon" />
@@ -765,6 +786,7 @@ onMounted(async () => {
         </form>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 

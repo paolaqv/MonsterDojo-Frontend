@@ -159,6 +159,5 @@ select {
     color: #d48600;
 }
 
-.tab {
-    display: none;
-}
+/* Eliminado: regla global '.tab { display:none; }' rompia v-show de Vue.
+   El control de tabs ahora es 100% via v-show en el template. */

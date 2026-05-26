@@ -29,3 +29,8 @@ export const updateProduct = async (productId, payload) => {
   const { data } = await api.put(`/products/${productId}`, payload)
   return data
 }
+
+export const deleteProduct = async (productId) => {
+  const { data } = await api.delete(`/products/${productId}`)
+  return data
+}

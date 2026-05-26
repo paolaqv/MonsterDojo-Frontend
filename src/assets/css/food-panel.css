@@ -347,9 +347,8 @@ button[type="button"]:hover {
     color: #d48600;
 }
 
-.tab {
-    display: none;
-}
+/* Eliminado: '.tab { display:none }' rompia v-show de Vue.
+   Los tabs los controla v-show en el template. */
 
 /* Estilos responsivos */
 .nav-hamburger {

@@ -18,8 +18,15 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   const method = String(config.method || '').toLowerCase()
 
-  if (['post', 'put', 'patch'].includes(method) && config.data) {
+  const isFormData =
+    typeof FormData !== 'undefined' && config.data instanceof FormData
+
+  if (['post', 'put', 'patch'].includes(method) && config.data && !isFormData) {
     config.data = sanitizePayload(config.data)
+  }
+
+  if (isFormData) {
+    delete config.headers['Content-Type']
   }
 
   if (token) {
