@@ -24,15 +24,20 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token')
     const method = String(config.method || '').toLowerCase()
 
-    /*
-      Se ejecuta para todas las peticiones:
-      GET, POST, PUT, PATCH y DELETE.
-    */
-    startGlobalLoading()
+  const isFormData =
+    typeof FormData !== 'undefined' && config.data instanceof FormData
 
-    if (['post', 'put', 'patch'].includes(method) && config.data) {
-      config.data = sanitizePayload(config.data)
-    }
+  if (['post', 'put', 'patch'].includes(method) && config.data && !isFormData) {
+    config.data = sanitizePayload(config.data)
+  }
+
+  if (isFormData) {
+    delete config.headers['Content-Type']
+  }
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`

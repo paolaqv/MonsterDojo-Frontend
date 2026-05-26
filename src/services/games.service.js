@@ -29,3 +29,8 @@ export const updateGame = async (gameId, payload) => {
   const { data } = await api.put(`/games/${gameId}`, payload)
   return data
 }
+
+export const deleteGame = async (gameId) => {
+  const { data } = await api.delete(`/games/${gameId}`)
+  return data
+}

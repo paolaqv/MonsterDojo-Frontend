@@ -8,25 +8,29 @@ import logo from '@/assets/images/logo.png'
 import menuImg from '@/assets/images/menu.png'
 import hamburguerImg from '@/assets/images/hamburguer.png'
 import categoryImg from '@/assets/images/category.png'
+import { usePermissions } from '@/composables/usePermissions'
 import {
   createProduct,
   createProductCategory,
+  deleteProduct,
   getProductById,
   getProductCategories,
   getProducts,
   updateProduct,
 } from '@/services/products.service'
+import { uploadImage } from '@/services/uploads.service'
 
 const router = useRouter()
-const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
-const userRole = storedUser?.rol_id_rol || ''
+const { hasPermission, hasRole } = usePermissions()
 
-const isMesero = computed(() => userRole === 'mesero')
-const isEncargadoLocal = computed(() => userRole === 'encargadoLocal')
+const canViewProducts = computed(() => hasPermission('ver_productos'))
+const canManageProducts = computed(() => hasPermission('gestionar_productos'))
 
 const homeRoute = computed(() => {
-  if (isMesero.value) return '/panel-mesero'
-  return '/adminpanel'
+  if (hasRole('mesero')) return '/panel-mesero'
+  if (hasRole('encargadoLocal')) return '/adminpanel'
+  if (hasRole('encargadoSeguridad')) return '/panel-seguridad'
+  return '/inicio_usuario'
 })
 
 const menuOpen = ref(false)
@@ -34,7 +38,6 @@ const search = ref('')
 const groupBy = ref('')
 const categorias = ref([])
 const productos = ref([])
-const selectedCategory = ref('')
 
 const showAddProductPopup = ref(false)
 const showEditProductPopup = ref(false)
@@ -89,18 +92,11 @@ const normalizeImage = (imagen) => {
   return `${apiBase}/${imagen}`
 }
 
-const fileToBase64 = (file) =>
-  new Promise((resolve, reject) => {
-    if (!file) {
-      resolve('')
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
+const uploadAndGetUrl = async (file) => {
+  if (!file) return ''
+  const { url } = await uploadImage(file, 'producto')
+  return url
+}
 
 const loadData = async () => {
   try {
@@ -134,9 +130,7 @@ const loadData = async () => {
       text: 'No se pudieron cargar los productos.',
       icon: 'error',
       confirmButtonText: 'OK',
-      customClass: {
-        confirmButton: 'swal2-confirm',
-      },
+      customClass: { confirmButton: 'swal2-confirm' },
     })
   }
 }
@@ -218,9 +212,7 @@ const clearEditForm = () => {
 }
 
 const clearCategoryForm = () => {
-  categoryForm.value = {
-    nombre: '',
-  }
+  categoryForm.value = { nombre: '' }
 }
 
 const showTab = (n) => {
@@ -232,11 +224,10 @@ const showEditTab = (n) => {
 }
 
 const confirmCancel = (formType) => {
-  let confirmMessage = '¿Está seguro de cancelar? Se perderán los datos.'
-
-  if (formType === 'editForm') {
-    confirmMessage = '¿Está seguro de cancelar? Se perderán sus cambios.'
-  }
+  const confirmMessage =
+    formType === 'editForm'
+      ? '¿Está seguro de cancelar? Se perderán sus cambios.'
+      : '¿Está seguro de cancelar? Se perderán los datos.'
 
   Swal.fire({
     title: '¿Está seguro?',
@@ -245,22 +236,18 @@ const confirmCancel = (formType) => {
     showCancelButton: true,
     confirmButtonText: 'Sí, cancelar',
     cancelButtonText: 'No, mantener',
-    customClass: {
-      confirmButton: 'swal2-confirm',
-      cancelButton: 'swal2-cancel',
-    },
+    customClass: { confirmButton: 'swal2-confirm', cancelButton: 'swal2-cancel' },
   }).then((result) => {
-    if (result.isConfirmed) {
-      if (formType === 'regForm') {
-        closePopup()
-        clearForm()
-      } else if (formType === 'editForm') {
-        closeEditPopup()
-        clearEditForm()
-      } else {
-        closeCategoryPopup()
-        clearCategoryForm()
-      }
+    if (!result.isConfirmed) return
+    if (formType === 'regForm') {
+      closePopup()
+      clearForm()
+    } else if (formType === 'editForm') {
+      closeEditPopup()
+      clearEditForm()
+    } else {
+      closeCategoryPopup()
+      clearCategoryForm()
     }
   })
 }
@@ -279,9 +266,7 @@ const showSuccessMessage = (popupType, message) => {
     text: message,
     icon: 'success',
     confirmButtonText: 'OK',
-    customClass: {
-      confirmButton: 'swal2-confirm',
-    },
+    customClass: { confirmButton: 'swal2-confirm' },
   }).then(async () => {
     if (popupType === 'contactPopup') {
       closePopup()
@@ -293,23 +278,23 @@ const showSuccessMessage = (popupType, message) => {
       closeCategoryPopup()
       clearCategoryForm()
     }
-
     await loadData()
   })
 }
 
 const handleProductoSubmit = async (event) => {
   event.preventDefault()
+  if (!canManageProducts.value) return
 
   try {
-    const imagenBase64 = await fileToBase64(regForm.value.imagen)
+    const imagenUrl = await uploadAndGetUrl(regForm.value.imagen)
 
     await createProduct({
       nombre: regForm.value.nombre,
       descripcion: regForm.value.descripcion,
       precio: Number(regForm.value.precio),
       max_personas: Number(regForm.value.max_personas),
-      imagen: imagenBase64,
+      imagen: imagenUrl,
       categoria_producto_id_catProducto: Number(regForm.value.categoria),
       activo: true,
     })
@@ -318,39 +303,43 @@ const handleProductoSubmit = async (event) => {
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: error?.response?.data?.detail || 'Hubo un problema al registrar el producto.',
+      text:
+        error?.normalizedMessage ||
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.detail ||
+        'Hubo un problema al registrar el producto.',
       icon: 'error',
       confirmButtonText: 'OK',
-      customClass: {
-        confirmButton: 'swal2-confirm',
-      },
+      customClass: { confirmButton: 'swal2-confirm' },
     })
   }
 }
 
 const handleCategorySubmit = async (event) => {
   event.preventDefault()
+  if (!canManageProducts.value) return
 
   try {
-    await createProductCategory({
-      nombre: categoryForm.value.nombre,
-    })
-
+    await createProductCategory({ nombre: categoryForm.value.nombre })
     showSuccessMessage('categoryPopup', 'Categoría registrada con éxito')
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: error?.response?.data?.detail || 'Hubo un problema al registrar la categoría.',
+      text:
+        error?.normalizedMessage ||
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.detail ||
+        'Hubo un problema al registrar la categoría.',
       icon: 'error',
       confirmButtonText: 'OK',
-      customClass: {
-        confirmButton: 'swal2-confirm',
-      },
+      customClass: { confirmButton: 'swal2-confirm' },
     })
   }
 }
 
 const openEditPopup = async (productId) => {
+  if (!canManageProducts.value) return
+
   try {
     const data = await getProductById(productId)
 
@@ -382,10 +371,11 @@ const openEditPopup = async (productId) => {
 
 const handleEditProductoSubmit = async (event) => {
   event.preventDefault()
+  if (!canManageProducts.value) return
 
   try {
     const nuevaImagen = editForm.value.imagen
-      ? await fileToBase64(editForm.value.imagen)
+      ? await uploadAndGetUrl(editForm.value.imagen)
       : editForm.value.imagenActual
 
     await updateProduct(editForm.value.id, {
@@ -402,18 +392,21 @@ const handleEditProductoSubmit = async (event) => {
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: error?.response?.data?.detail || 'Hubo un problema al actualizar el producto.',
+      text:
+        error?.normalizedMessage ||
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.detail ||
+        'Hubo un problema al actualizar el producto.',
       icon: 'error',
       confirmButtonText: 'OK',
-      customClass: {
-        confirmButton: 'swal2-confirm',
-      },
+      customClass: { confirmButton: 'swal2-confirm' },
     })
   }
 }
 
 const confirmDelete = (event, producto) => {
   event.preventDefault()
+  if (!canManageProducts.value) return
 
   Swal.fire({
     title: '¿Está seguro?',
@@ -422,45 +415,31 @@ const confirmDelete = (event, producto) => {
     showCancelButton: true,
     confirmButtonText: 'Sí, archivar',
     cancelButtonText: 'No, cancelar',
-    customClass: {
-      confirmButton: 'swal2-confirm',
-      cancelButton: 'swal2-cancel',
-    },
+    customClass: { confirmButton: 'swal2-confirm', cancelButton: 'swal2-cancel' },
   }).then(async (result) => {
-    if (result.isConfirmed) {
-      try {
-        await updateProduct(producto.id_producto, {
-          nombre: producto.nombre,
-          descripcion: producto.descripcion,
-          precio: Number(producto.precio),
-          max_personas: Number(producto.max_personas),
-          imagen: producto.imagen,
-          categoria_producto_id_catProducto:
-            producto.categoria_producto_id_catProducto ??
-            producto.categoria_producto?.id_catProducto ??
-            producto.categoria_producto?.id_categoria,
-          activo: false,
-        })
-
-        Swal.fire('¡Archivado!', 'El producto ha sido archivado.', 'success')
-        await loadData()
-      } catch (error) {
-        Swal.fire({
-          title: 'Error',
-          text: 'Hubo un problema al archivar el producto.',
-          icon: 'error',
-          confirmButtonText: 'OK',
-          customClass: {
-            confirmButton: 'swal2-confirm',
-          },
-        })
-      }
+    if (!result.isConfirmed) return
+    try {
+      await deleteProduct(producto.id_producto)
+      Swal.fire('¡Archivado!', 'El producto ha sido archivado.', 'success')
+      await loadData()
+    } catch (error) {
+      Swal.fire({
+        title: 'Error',
+        text:
+          error?.normalizedMessage ||
+          error?.response?.data?.error?.message ||
+          'Hubo un problema al archivar el producto.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+        customClass: { confirmButton: 'swal2-confirm' },
+      })
     }
   })
 }
 
 const confirmUnarchive = (event, producto) => {
   event.preventDefault()
+  if (!canManageProducts.value) return
 
   Swal.fire({
     title: '¿Está seguro?',
@@ -469,31 +448,26 @@ const confirmUnarchive = (event, producto) => {
     showCancelButton: true,
     confirmButtonText: 'Sí, desarchivar',
     cancelButtonText: 'No, cancelar',
-    customClass: {
-      confirmButton: 'swal2-confirm',
-      cancelButton: 'swal2-cancel',
-    },
+    customClass: { confirmButton: 'swal2-confirm', cancelButton: 'swal2-cancel' },
   }).then(async (result) => {
-    if (result.isConfirmed) {
-      try {
-        await updateProduct(producto.id_producto, {
-          nombre: producto.nombre,
-          descripcion: producto.descripcion,
-          precio: Number(producto.precio),
-          max_personas: Number(producto.max_personas),
-          imagen: producto.imagen,
-          categoria_producto_id_catProducto:
-            producto.categoria_producto_id_catProducto ??
-            producto.categoria_producto?.id_catProducto ??
-            producto.categoria_producto?.id_categoria,
-          activo: true,
-        })
-
-        Swal.fire('¡Desarchivado!', 'El producto ha sido desarchivado.', 'success')
-        await loadData()
-      } catch (error) {
-        Swal.fire('Error', 'No se pudo desarchivar el producto.', 'error')
-      }
+    if (!result.isConfirmed) return
+    try {
+      await updateProduct(producto.id_producto, {
+        nombre: producto.nombre,
+        descripcion: producto.descripcion,
+        precio: Number(producto.precio),
+        max_personas: Number(producto.max_personas),
+        imagen: producto.imagen,
+        categoria_producto_id_catProducto:
+          producto.categoria_producto_id_catProducto ??
+          producto.categoria_producto?.id_catProducto ??
+          producto.categoria_producto?.id_categoria,
+        activo: true,
+      })
+      Swal.fire('¡Desarchivado!', 'El producto ha sido desarchivado.', 'success')
+      await loadData()
+    } catch (error) {
+      Swal.fire('Error', 'No se pudo desarchivar el producto.', 'error')
     }
   })
 }
@@ -514,25 +488,25 @@ onMounted(async () => {
         <i class="fa fa-bars"></i>
       </div>
 
-<ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
-  <li><RouterLink :to="homeRoute">Inicio</RouterLink></li>
-  <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
-  <li><RouterLink to="/food_panel">Comida</RouterLink></li>
-  <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
+      <ul class="nav-items" :class="{ 'nav-items-active': menuOpen }">
+        <li><RouterLink :to="homeRoute">Inicio</RouterLink></li>
+        <li><RouterLink to="/game_panel">Juegos</RouterLink></li>
+        <li><RouterLink to="/food_panel">Comida</RouterLink></li>
+        <li><RouterLink to="/pedidos_panel">Pedidos</RouterLink></li>
 
-  <li v-if="isEncargadoLocal"><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
-  <li v-if="isEncargadoLocal"><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
-  <li v-if="isEncargadoLocal">
-    <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
-  </li>
+        <li v-if="canManageProducts"><RouterLink to="/registro_mesa">Mesas</RouterLink></li>
+        <li v-if="canManageProducts"><RouterLink to="/reservas_panel">Reservas</RouterLink></li>
+        <li v-if="canManageProducts">
+          <RouterLink to="/perfil_admin"><i class="fa-solid fa-user-gear"></i></RouterLink>
+        </li>
 
-  <li><RouterLink to="/logout"><i class="fa-solid fa-sign-out"></i></RouterLink></li>
-</ul>
+        <li><RouterLink to="/logout"><i class="fa-solid fa-sign-out"></i></RouterLink></li>
+      </ul>
     </nav>
 
     <div class="container">
       <div class="actions-container">
-        <form method="GET" action="/food_panel">
+        <form @submit.prevent>
           <div class="search-container">
             <input v-model="search" type="text" name="search" placeholder="Buscar producto" />
             <button type="submit">Buscar <i class="fa-solid fa-search"></i></button>
@@ -554,14 +528,14 @@ onMounted(async () => {
           </div>
         </form>
 
-<div v-if="isEncargadoLocal" class="add-buttons">
-  <button id="addProductBtn" @click="openAddProductPopup">
-    <i class="fa-solid fa-burger"></i> Agregar Producto
-  </button>
-  <button id="addCategoryBtn" @click="openCategoryPopup">
-    <i class="fa-solid fa-list"></i> Agregar Categoría
-  </button>
-</div>
+        <div v-if="canManageProducts" class="add-buttons">
+          <button type="button" id="addProductBtn" @click="openAddProductPopup">
+            <i class="fa-solid fa-burger"></i> Agregar Producto
+          </button>
+          <button type="button" id="addCategoryBtn" @click="openCategoryPopup">
+            <i class="fa-solid fa-list"></i> Agregar Categoría
+          </button>
+        </div>
       </div>
 
       <div class="table-responsive">
@@ -575,11 +549,16 @@ onMounted(async () => {
               <th>Máx. Personas</th>
               <th>Imagen</th>
               <th>Categoría</th>
-              <th v-if="isEncargadoLocal">Acciones</th>
+              <th v-if="canManageProducts">Acciones</th>
             </tr>
           </thead>
 
           <tbody>
+            <tr v-if="filteredProductos.length === 0">
+              <td :colspan="canManageProducts ? 8 : 7" style="text-align:center; padding:20px;">
+                No hay productos para mostrar.
+              </td>
+            </tr>
             <tr v-for="producto in filteredProductos" :key="producto.id_producto">
               <td>{{ producto.id_producto }}</td>
               <td>{{ producto.nombre }}</td>
@@ -590,30 +569,28 @@ onMounted(async () => {
                 <img :src="producto.imagen" :alt="`Imagen de ${producto.nombre}`" width="100" />
               </td>
               <td>{{ producto.categoria_producto?.nombre }}</td>
-              <td>
-                <td v-if="isEncargadoLocal">
-  <div class="action-buttons">
-    <button class="editProductBtn" @click="openEditPopup(producto.id_producto)">
-      <i class="fa-solid fa-edit"></i>
-    </button>
+              <td v-if="canManageProducts">
+                <div class="action-buttons">
+                  <button class="editProductBtn" @click="openEditPopup(producto.id_producto)">
+                    <i class="fa-solid fa-edit"></i>
+                  </button>
 
-    <button
-      v-if="producto.activo"
-      class="deleteProductBtn"
-      @click="confirmDelete($event, producto)"
-    >
-      <i class="fa-solid fa-trash"></i>
-    </button>
+                  <button
+                    v-if="producto.activo"
+                    class="deleteProductBtn"
+                    @click="confirmDelete($event, producto)"
+                  >
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
 
-    <button
-      v-else
-      class="unarchiveProductBtn"
-      @click="confirmUnarchive($event, producto)"
-    >
-      <i class="fa-solid fa-box-open"></i>
-    </button>
-  </div>
-</td>
+                  <button
+                    v-else
+                    class="unarchiveProductBtn"
+                    @click="confirmUnarchive($event, producto)"
+                  >
+                    <i class="fa-solid fa-box-open"></i>
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -621,166 +598,163 @@ onMounted(async () => {
       </div>
     </div>
 
-<div v-if="showAddProductPopup && isEncargadoLocal" id="contactPopup" class="popup">      <div class="popup-content">
+    <!-- POPUP REGISTRAR PRODUCTO -->
+    <Teleport to="body">
+    <div
+      v-show="showAddProductPopup && canManageProducts"
+      id="contactPopup"
+      class="popup"
+      style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0,0,0,0.6) !important; z-index: 99999 !important; display: flex !important; justify-content: center !important; align-items: center !important;"
+    >
+      <div class="popup-content" style="background:#1c1c1c; padding:20px; border-radius:10px; max-width:500px; width:90%; max-height:90vh; overflow-y:auto;">
         <span class="close-btn" @click="closePopup">&times;</span>
         <img :src="menuImg" alt="Product Icon" class="product-icon" />
         <h2>REGISTRO NUEVO PRODUCTO</h2>
 
-        <div class="step-indicator">
-          <div class="step-container">
-            <span id="step1" class="step" :class="{ active: currentTab === 0 }" @click="showTab(0)">1</span>
-            <span class="step-line" :class="{ active: currentTab > 0 }"></span>
-            <span id="step2" class="step" :class="{ active: currentTab === 1 }" @click="showTab(1)">2</span>
-            <span class="step-line" :class="{ active: currentTab > 1 }"></span>
-            <span id="step3" class="step" :class="{ active: currentTab === 2 }" @click="showTab(2)">3</span>
-          </div>
-        </div>
-
         <form id="regForm" @submit.prevent="handleProductoSubmit">
-          <div v-show="currentTab === 0" class="tab">
-            <div class="form-group">
-              <label for="nombre">Nombre</label>
-              <input id="nombre" v-model="regForm.nombre" type="text" name="nombre" required />
-              <span id="error-nombre" class="error-message"></span>
-            </div>
-
-            <div class="form-group">
-              <label for="descripcion">Descripción</label>
-              <input id="descripcion" v-model="regForm.descripcion" type="text" name="descripcion" required />
-              <span id="error-descripcion" class="error-message"></span>
-            </div>
+          <div class="form-group">
+            <label for="nombre">Nombre</label>
+            <input id="nombre" v-model="regForm.nombre" type="text" maxlength="50" required />
           </div>
 
-          <div v-show="currentTab === 1" class="tab">
-            <div class="form-group">
-              <label for="precio">Precio</label>
-              <input id="precio" v-model="regForm.precio" type="number" name="precio" step="0.01" required />
-              <span id="error-precio" class="error-message"></span>
-            </div>
-
-            <div class="form-group">
-              <label for="max_personas">Máx. Personas</label>
-              <input id="max_personas" v-model="regForm.max_personas" type="number" name="max_personas" required />
-              <span id="error-max_personas" class="error-message"></span>
-            </div>
+          <div class="form-group">
+            <label for="descripcion">Descripción</label>
+            <input id="descripcion" v-model="regForm.descripcion" type="text" maxlength="500" required />
           </div>
 
-          <div v-show="currentTab === 2" class="tab">
-            <div class="form-group">
-              <label for="imagen">Imagen</label>
-              <input
-                id="imagen"
-                type="file"
-                name="imagen"
-                accept="image/png, image/jpeg, image/jpg"
-                required
-                @change="handleRegImageChange"
-              />
-              <span id="error-imagen" class="error-message"></span>
-            </div>
+          <div class="form-group">
+            <label for="precio">Precio</label>
+            <input id="precio" v-model="regForm.precio" type="number" step="0.01" min="0.01" max="100000" required />
+          </div>
 
-            <div class="form-group">
-              <label for="categoria">Categoría</label>
-              <select id="categoria" v-model="regForm.categoria" name="categoria" required>
-                <option
-                  v-for="categoria in categorias"
-                  :key="categoria.id_catProducto"
-                  :value="categoria.id_catProducto"
-                >
-                  {{ categoria.nombre }}
-                </option>
-              </select>
-            </div>
+          <div class="form-group">
+            <label for="max_personas">Máx. Personas</label>
+            <input id="max_personas" v-model="regForm.max_personas" type="number" min="1" max="100" required />
+          </div>
 
-            <div class="buttons">
-              <button type="submit">Registrar</button>
-              <button type="button" @click="confirmCancel('regForm')">Cancelar</button>
-            </div>
+          <div class="form-group">
+            <label for="categoria">Categoría</label>
+            <select id="categoria" v-model="regForm.categoria" required>
+              <option disabled value="">Selecciona una categoría</option>
+              <option
+                v-for="categoria in categorias"
+                :key="categoria.id_catProducto"
+                :value="categoria.id_catProducto"
+              >
+                {{ categoria.nombre }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="imagen">Imagen</label>
+            <input
+              id="imagen"
+              type="file"
+              accept="image/png, image/jpeg, image/jpg, image/webp"
+              required
+              @change="handleRegImageChange"
+            />
+          </div>
+
+          <div class="buttons">
+            <button type="submit">Registrar</button>
+            <button type="button" @click="confirmCancel('regForm')">Cancelar</button>
           </div>
         </form>
       </div>
     </div>
 
-<div v-if="showEditProductPopup && isEncargadoLocal" id="editPopup" class="popup">      <div class="popup-content">
+    </Teleport>
+
+    <!-- POPUP EDITAR PRODUCTO -->
+    <Teleport to="body">
+    <div
+      v-show="showEditProductPopup && canManageProducts"
+      id="editPopup"
+      class="popup"
+      style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0,0,0,0.6) !important; z-index: 99999 !important; display: flex !important; justify-content: center !important; align-items: center !important;"
+    >
+      <div class="popup-content" style="background:#1c1c1c; padding:20px; border-radius:10px; max-width:500px; width:90%; max-height:90vh; overflow-y:auto;">
         <span class="close-btn" @click="closeEditPopup">&times;</span>
         <img :src="hamburguerImg" alt="Product Icon" class="product-icon" />
         <h2>EDITAR PRODUCTO</h2>
 
-        <div class="step-indicator">
-          <div class="step-container">
-            <span id="edit-step1" class="step" :class="{ active: currentEditTab === 0 }" @click="showEditTab(0)">1</span>
-            <span class="step-line" :class="{ active: currentEditTab > 0 }"></span>
-            <span id="edit-step2" class="step" :class="{ active: currentEditTab === 1 }" @click="showEditTab(1)">2</span>
-            <span class="step-line" :class="{ active: currentEditTab > 1 }"></span>
-            <span id="edit-step3" class="step" :class="{ active: currentEditTab === 2 }" @click="showEditTab(2)">3</span>
-          </div>
-        </div>
-
-   <form id="editForm" @submit.prevent="handleEditProductoSubmit">
-          <div v-show="currentEditTab === 0" class="tab">
-            <div class="form-group">
-              <label for="edit_nombre">Nombre</label>
-              <input id="edit_nombre" v-model="editForm.nombre" type="text" name="nombre" required />
-              <span id="edit-error-nombre" class="error-message"></span>
-            </div>
-
-            <div class="form-group">
-              <label for="edit_descripcion">Descripción</label>
-              <input id="edit_descripcion" v-model="editForm.descripcion" type="text" name="descripcion" required />
-              <span id="edit-error-descripcion" class="error-message"></span>
-            </div>
+        <form id="editForm" @submit.prevent="handleEditProductoSubmit">
+          <div class="form-group">
+            <label for="edit_nombre">Nombre</label>
+            <input id="edit_nombre" v-model="editForm.nombre" type="text" maxlength="50" required />
           </div>
 
-          <div v-show="currentEditTab === 1" class="tab">
-            <div class="form-group">
-              <label for="edit_precio">Precio</label>
-              <input id="edit_precio" v-model="editForm.precio" type="number" name="precio" step="0.01" required />
-              <span id="edit-error-precio" class="error-message"></span>
-            </div>
-
-            <div class="form-group">
-              <label for="edit_max_personas">Máx. Personas</label>
-              <input id="edit_max_personas" v-model="editForm.max_personas" type="number" name="max_personas" required />
-              <span id="edit-error-max_personas" class="error-message"></span>
-            </div>
+          <div class="form-group">
+            <label for="edit_descripcion">Descripción</label>
+            <input id="edit_descripcion" v-model="editForm.descripcion" type="text" maxlength="500" required />
           </div>
 
-          <div v-show="currentEditTab === 2" class="tab">
-            <div class="form-group">
-              <label for="edit_imagen">Imagen</label>
-              <input
-                id="edit_imagen"
-                type="file"
-                name="imagen"
-                accept="image/png, image/jpeg, image/jpg"
-                @change="handleEditImageChange"
-              />
-              <span id="edit-error-imagen" class="error-message"></span>
-            </div>
+          <div class="form-group">
+            <label for="edit_precio">Precio</label>
+            <input id="edit_precio" v-model="editForm.precio" type="number" step="0.01" min="0.01" max="100000" required />
+          </div>
 
-            <div class="form-group">
-              <label for="edit_categoria">Categoría</label>
-              <select id="edit_categoria" v-model="editForm.categoria" name="categoria" required>
-                <option
-                  v-for="categoria in categorias"
-                  :key="categoria.id_catProducto"
-                  :value="categoria.id_catProducto"
-                >
-                  {{ categoria.nombre }}
-                </option>
-              </select>
-            </div>
+          <div class="form-group">
+            <label for="edit_max_personas">Máx. Personas</label>
+            <input id="edit_max_personas" v-model="editForm.max_personas" type="number" min="1" max="100" required />
+          </div>
 
-            <div class="buttons">
-              <button type="submit">Guardar Cambios</button>
-              <button type="button" @click="confirmCancel('editForm')">Cancelar</button>
-            </div>
+          <div class="form-group">
+            <label for="edit_categoria">Categoría</label>
+            <select id="edit_categoria" v-model="editForm.categoria" required>
+              <option disabled value="">Selecciona una categoría</option>
+              <option
+                v-for="categoria in categorias"
+                :key="categoria.id_catProducto"
+                :value="categoria.id_catProducto"
+              >
+                {{ categoria.nombre }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="edit_imagen">Imagen (opcional, deja vacío para mantener la actual)</label>
+            <input
+              id="edit_imagen"
+              type="file"
+              accept="image/png, image/jpeg, image/jpg, image/webp"
+              @change="handleEditImageChange"
+            />
+            <img
+              v-if="editForm.imagenActual && !editForm.imagen"
+              :src="editForm.imagenActual"
+              alt="Imagen actual"
+              style="margin-top:8px; max-width:120px; border-radius:6px;"
+            />
+          </div>
+
+          <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+            <input id="edit_activo" v-model="editForm.activo" type="checkbox" />
+            <label for="edit_activo" style="margin:0;">Producto activo</label>
+          </div>
+
+          <div class="buttons">
+            <button type="submit">Guardar Cambios</button>
+            <button type="button" @click="confirmCancel('editForm')">Cancelar</button>
           </div>
         </form>
       </div>
     </div>
 
-<div v-if="showCategoryPopup && isEncargadoLocal" id="categoryPopup" class="popup">      <div class="popup-content">
+    </Teleport>
+
+    <!-- POPUP NUEVA CATEGORIA -->
+    <Teleport to="body">
+    <div
+      v-show="showCategoryPopup && canManageProducts"
+      id="categoryPopup"
+      class="popup"
+      style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0,0,0,0.6) !important; z-index: 99999 !important; display: flex !important; justify-content: center !important; align-items: center !important;"
+    >
+      <div class="popup-content" style="background:#1c1c1c; padding:20px; border-radius:10px; max-width:500px; width:90%; max-height:90vh; overflow-y:auto;">
         <span class="close-btn" @click="closeCategoryPopup">&times;</span>
         <img :src="categoryImg" alt="Category Icon" class="product-icon" />
         <h2>REGISTRO NUEVA CATEGORÍA</h2>
@@ -795,7 +769,6 @@ onMounted(async () => {
               name="nombre"
               required
             />
-            <span id="error-categoria_nombre" class="error-message"></span>
           </div>
 
           <div class="buttons">
@@ -805,88 +778,57 @@ onMounted(async () => {
         </form>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
-    <!-- Estilos para las alertas -->
-    <style>
-        .swal2-cancel {
-            background-color: #192847 !important;
-            color: #fff !important;
-        }
-        .swal2-confirm {
-            background-color: #d48600 !important;
-            color: #fff !important;
-            width: 120px !important; 
-        }
 
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
+<style>
+.swal2-cancel {
+  background-color: #192847 !important;
+  color: #fff !important;
+}
+.swal2-confirm {
+  background-color: #d48600 !important;
+  color: #fff !important;
+  width: 120px !important;
+}
 
-        .action-buttons button {
-            background-color: var(--alt-primary-color);
-            color: var(--light-color);
-            border: none;
-            padding: 10px;
-            border-radius: 10px;
-            cursor: pointer;
-        }
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
 
-        .action-buttons button i {
-            pointer-events: none;
-        }
+.action-buttons button {
+  background-color: var(--alt-primary-color);
+  color: var(--light-color);
+  border: none;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
 
-        .search-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 10px;
-            gap: 20px; 
-        }
+.action-buttons button i {
+  pointer-events: none;
+}
 
-        .search-container button,
-        .group-by-container button,
-        .add-buttons button {
-            margin-left: 10px;
-            margin-right: 10px;
-        }
+.search-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  gap: 20px;
+}
 
-        .add-buttons {
-            display: flex;
-            gap: 20px; /* Espacio entre los botones de agregar producto y categoría */
-        }
+.search-container button,
+.group-by-container button,
+.add-buttons button {
+  margin-left: 10px;
+  margin-right: 10px;
+}
 
-        .add-product button,
-        .add-category button {
-            width: auto;
-            background-color: var(--alt-primary-color);
-            color: var(--light-color);
-            font-size: 15px;
-            border: none;
-            padding: 10px;
-            border-radius: 20px;
-            cursor: pointer;
-            margin-left: 10px;
-            margin-right: 10px;
-        }
-        
-        .group-by-container {
-            display: flex;
-            justify-content: flex-start;            
-            align-items: center;
-            margin-top: 10px;
-            gap: 5px; 
-        }
-
-        .group-by-container label {
-            font-size: 14px;
-        }
-
-        .group-by-container select {
-            font-size: 14px;
-            padding: 5px;
-            width: 150px; /* Ajustar el tamaño del select */
-        }
-    </style>
+.add-buttons {
+  display: flex;
+  gap: 20px;
+}
+</style>

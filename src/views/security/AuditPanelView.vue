@@ -1,275 +1,343 @@
 <template>
-<div class="audit-panel">
+  <div class="audit-panel">
 
-<header class="audit-header">
+    <header class="audit-header">
+      <div class="header-left">
+        <span class="audit-label">SEGURIDAD</span>
+        <h1 v-if="activeView === 'seguridad'">Bitácora de Auditoría</h1>
+        <h1 v-else>Logs de Aplicación</h1>
+      </div>
 
-<div class="header-left">
-<span class="audit-label">SEGURIDAD</span>
+      <div class="header-right">
+        <div class="metric-box">
+          <strong>{{ currentLogs.length }}</strong>
+          <span>Eventos</span>
+        </div>
 
-<h1>Bitácora de Auditoría</h1>
-</div>
+        <div v-if="activeView === 'seguridad'" class="metric-box critical">
+          <strong>{{ criticalCount }}</strong>
+          <span>Críticos</span>
+        </div>
 
+        <div v-else class="metric-box critical">
+          <strong>{{ errorCount }}</strong>
+          <span>Errores</span>
+        </div>
 
-<div class="header-right">
+        <button type="button" class="refresh-btn" @click="cargarVistaActual">
+          Actualizar
+        </button>
+      </div>
+    </header>
 
-<div class="metric-box">
-<strong>{{ logs.length }}</strong>
-<span>Eventos</span>
-</div>
+    <!-- ============== VISTA: LOGS DE SEGURIDAD / USUARIO ============== -->
+    <template v-if="activeView === 'seguridad'">
+      <section class="filters-card">
+        <input
+          v-model.trim="busqueda"
+          maxlength="100"
+          placeholder="Buscar evento, módulo o descripción"
+          @keyup.enter="cargarLogs"
+        />
 
-<div class="metric-box critical">
-<strong>{{ criticalCount }}</strong>
-<span>Críticos</span>
-</div>
+        <select v-model="filtroSeveridad" @change="cargarLogs">
+          <option value="">Todas</option>
+          <option value="BAJA">BAJA</option>
+          <option value="MEDIA">MEDIA</option>
+          <option value="ALTA">ALTA</option>
+          <option value="CRITICA">CRITICA</option>
+        </select>
 
-<button
-type="button"
-class="refresh-btn"
-@click="cargarLogs"
->
-Actualizar
-</button>
+        <div class="critical-filter">
+          <span class="filter-caption">Mostrar solo eventos críticos</span>
+          <label class="switch">
+            <input
+              v-model="soloCriticos"
+              type="checkbox"
+              @change="cargarLogs"
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </section>
 
-</div>
+      <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
 
-</header>
+      <div v-if="loading" class="loading-box">
+        <div class="spinner"></div>
+        <p>Cargando registros de auditoría...</p>
+      </div>
 
+      <div v-if="!loading" class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Evento</th>
+              <th>Módulo</th>
+              <th>Severidad</th>
+              <th>Estado</th>
+              <th>Descripción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="log in logs" :key="log.id">
+              <td>{{ formatDate(log.fecha) }}</td>
+              <td>{{ log.evento }}</td>
+              <td>{{ log.modulo }}</td>
+              <td>
+                <span
+                  :class="['severity', String(log.severidad || '').toLowerCase()]"
+                >{{ log.severidad || '-' }}</span>
+              </td>
+              <td>{{ log.estado || '-' }}</td>
+              <td>{{ log.descripcion || '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
+      <div class="extra-actions">
+        <button
+          type="button"
+          class="switch-view-btn"
+          @click="abrirAplicacion"
+        >
+          Ver logs de aplicación
+        </button>
+      </div>
+    </template>
 
-<section class="filters-card">
+    <!-- ============== VISTA: LOGS DE APLICACION ============== -->
+    <template v-else>
+      <section class="filters-card">
+        <input
+          v-model.trim="busquedaApp"
+          maxlength="100"
+          placeholder="Buscar evento, módulo o descripción"
+          @keyup.enter="cargarLogsAplicacion"
+        />
 
-<input
-v-model.trim="busqueda"
-maxlength="100"
-placeholder="Buscar evento, módulo o descripción"
-@keyup.enter="cargarLogs"
-/>
+        <select v-model="filtroSeveridadApp" @change="cargarLogsAplicacion">
+          <option value="">Todas</option>
+          <option value="INFO">INFO</option>
+          <option value="WARN">WARN</option>
+          <option value="ERROR">ERROR</option>
+          <option value="CRITICA">CRITICA</option>
+        </select>
 
+        <input
+          v-model.trim="filtroModuloApp"
+          maxlength="100"
+          placeholder="Filtrar módulo (uploads, pagos, sistema...)"
+          @keyup.enter="cargarLogsAplicacion"
+        />
+      </section>
 
-<select
-v-model="filtroSeveridad"
-@change="cargarLogs"
->
-<option value="">Todas</option>
-<option value="BAJA">BAJA</option>
-<option value="MEDIA">MEDIA</option>
-<option value="ALTA">ALTA</option>
-<option value="CRITICA">CRITICA</option>
-</select>
+      <p v-if="errorMessageApp" class="error-message">{{ errorMessageApp }}</p>
 
+      <div v-if="loadingApp" class="loading-box">
+        <div class="spinner"></div>
+        <p>Cargando logs de aplicación...</p>
+      </div>
 
-<div class="critical-filter">
+      <div v-if="!loadingApp" class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Módulo</th>
+              <th>Evento</th>
+              <th>Severidad</th>
+              <th>Estado</th>
+              <th>Usuario</th>
+              <th>Entidad</th>
+              <th>Descripción</th>
+              <th>Recurso</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="log in logsApp" :key="log.id">
+              <td>{{ formatDate(log.fecha) }}</td>
+              <td>{{ log.modulo }}</td>
+              <td>{{ log.evento }}</td>
+              <td>
+                <span
+                  :class="['severity', appSeverityClass(log.severidad)]"
+                >{{ log.severidad || '-' }}</span>
+              </td>
+              <td>{{ log.estado || '-' }}</td>
+              <td>{{ log.usuario_id ?? '-' }}</td>
+              <td>
+                <template v-if="log.entidad_afectada">
+                  {{ log.entidad_afectada }}{{ log.entidad_id ? ` #${log.entidad_id}` : '' }}
+                </template>
+                <template v-else>-</template>
+              </td>
+              <td>{{ log.descripcion || '-' }}</td>
+              <td>
+                <a
+                  v-if="getImageUrl(log)"
+                  :href="getImageUrl(log)"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <img
+                    :src="getImageUrl(log)"
+                    alt="recurso subido"
+                    style="max-width:80px; max-height:60px; border-radius:6px; border:1px solid #cfd6e2;"
+                  />
+                </a>
+                <span v-else>-</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-<span class="filter-caption">
-Mostrar solo eventos críticos
-</span>
-
-<label class="switch">
-
-<input
-v-model="soloCriticos"
-type="checkbox"
-@change="cargarLogs"
-/>
-
-<span class="slider"></span>
-
-</label>
-
-</div>
-
-</section>
-
-
-
-<p
-v-if="errorMessage"
-class="error-message"
->
-{{ errorMessage }}
-</p>
-
-
-
-<!-- LOADING -->
-<div
-v-if="loading"
-class="loading-box"
->
-
-<div class="spinner"></div>
-
-<p>
-Cargando registros de auditoría...
-</p>
-
-</div>
-
-
-
-<!-- TABLA -->
-<div
-v-if="!loading"
-class="table-wrap"
->
-
-<table>
-
-<thead>
-<tr>
-<th>Fecha</th>
-<th>Evento</th>
-<th>Módulo</th>
-<th>Severidad</th>
-<th>Estado</th>
-<th>Descripción</th>
-</tr>
-</thead>
-
-<tbody>
-
-<tr
-v-for="log in logs"
-:key="log.id"
->
-
-<td>{{ formatDate(log.fecha) }}</td>
-
-<td>{{ log.evento }}</td>
-
-<td>{{ log.modulo }}</td>
-
-<td>
-<span
-:class="[
-'severity',
-String(log.severidad || '').toLowerCase()
-]"
->
-{{ log.severidad || '-' }}
-</span>
-</td>
-
-<td>{{ log.estado || '-' }}</td>
-
-<td>{{ log.descripcion || '-' }}</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
-
-</div>
+      <div class="extra-actions">
+        <button
+          type="button"
+          class="switch-view-btn back"
+          @click="volverSeguridad"
+        >
+          Volver a logs de seguridad
+        </button>
+      </div>
+    </template>
+  </div>
 </template>
 
-
-
 <script setup>
-import { computed,onMounted,ref,watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { getAuditLogs } from '@/services/activityLogs.service'
+import { getApplicationLogs } from '@/services/applicationLogs.service'
 
-const logs=ref([])
-const busqueda=ref('')
-const filtroSeveridad=ref('')
-const soloCriticos=ref(false)
+const activeView = ref('seguridad')
 
-const errorMessage=ref('')
+// ===== Seguridad =====
+const logs = ref([])
+const busqueda = ref('')
+const filtroSeveridad = ref('')
+const soloCriticos = ref(false)
+const errorMessage = ref('')
+const loading = ref(false)
+let debounceId = null
 
-const loading=ref(false)
+const cargarLogs = async () => {
+  try {
+    loading.value = true
+    errorMessage.value = ''
+    logs.value = await getAuditLogs({
+      search: busqueda.value || undefined,
+      severidad: soloCriticos.value ? undefined : filtroSeveridad.value || undefined,
+      critical_only: soloCriticos.value || undefined,
+      limit: 200,
+    })
+  } catch (error) {
+    errorMessage.value = error.normalizedMessage || 'No se pudo cargar la bitácora.'
+  } finally {
+    loading.value = false
+  }
+}
 
-let debounceId=null
+const criticalCount = computed(() =>
+  logs.value.filter((log) => ['ALTA', 'CRITICA'].includes(log.severidad)).length,
+)
 
-
-const cargarLogs=async()=>{
-
-try{
-
-loading.value=true
-
-errorMessage.value=''
-
-logs.value=await getAuditLogs({
-
-search:
-busqueda.value || undefined,
-
-severidad:
-soloCriticos.value
-? undefined
-: filtroSeveridad.value || undefined,
-
-critical_only:
-soloCriticos.value || undefined,
-
-limit:200
-
+watch(busqueda, () => {
+  clearTimeout(debounceId)
+  debounceId = setTimeout(cargarLogs, 350)
 })
 
-}catch(error){
+// ===== Aplicacion =====
+const logsApp = ref([])
+const busquedaApp = ref('')
+const filtroSeveridadApp = ref('')
+const filtroModuloApp = ref('')
+const errorMessageApp = ref('')
+const loadingApp = ref(false)
+let debounceAppId = null
 
-errorMessage.value=
-error.normalizedMessage
-|| 'No se pudo cargar la bitácora.'
-
+const cargarLogsAplicacion = async () => {
+  try {
+    loadingApp.value = true
+    errorMessageApp.value = ''
+    logsApp.value = await getApplicationLogs({
+      search: busquedaApp.value || undefined,
+      severidad: filtroSeveridadApp.value || undefined,
+      modulo: filtroModuloApp.value || undefined,
+      limit: 200,
+    })
+  } catch (error) {
+    errorMessageApp.value =
+      error.normalizedMessage || 'No se pudo cargar los logs de aplicación.'
+  } finally {
+    loadingApp.value = false
+  }
 }
-finally{
 
-loading.value=false
-
-}
-
-}
-
-
-
-const criticalCount=computed(
-()=>logs.value.filter(
-log=>
-['ALTA','CRITICA']
-.includes(log.severidad)
-).length
+const errorCount = computed(() =>
+  logsApp.value.filter((log) => ['ERROR', 'CRITICA'].includes(log.severidad)).length,
 )
 
-
-
-const formatDate=(value)=>{
-
-if(!value) return '-'
-
-return new Intl.DateTimeFormat(
-'es-BO',
-{
-dateStyle:'short',
-timeStyle:'short'
-}
-).format(new Date(value))
-
+const appSeverityClass = (sev) => {
+  const s = String(sev || '').toLowerCase()
+  if (s === 'error') return 'alta'
+  if (s === 'critica') return 'critica'
+  if (s === 'warn') return 'media'
+  return 'baja'
 }
 
+// Reconstruye la URL publica de Supabase para eventos de subida de imagen.
+// El backend guarda el path del objeto en entidad_id (ej. "productos/abc.png").
+const SUPABASE_PUBLIC_URL =
+  import.meta.env.VITE_SUPABASE_URL ||
+  'https://olcwwkccufjmqaskumin.supabase.co'
+const SUPABASE_BUCKET = import.meta.env.VITE_SUPABASE_BUCKET || 'Seguridad'
 
+const getImageUrl = (log) => {
+  if (!log || log.evento !== 'ARCHIVO_SUBIDO') return null
+  const path = log.entidad_id
+  if (!path) return null
+  return `${SUPABASE_PUBLIC_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${path}`
+}
 
-watch(
-busqueda,
-()=>{
+watch(busquedaApp, () => {
+  clearTimeout(debounceAppId)
+  debounceAppId = setTimeout(cargarLogsAplicacion, 350)
+})
 
-clearTimeout(debounceId)
-
-debounceId=setTimeout(
-cargarLogs,
-350
+// ===== Comun =====
+const currentLogs = computed(() =>
+  activeView.value === 'seguridad' ? logs.value : logsApp.value,
 )
 
+const cargarVistaActual = () => {
+  if (activeView.value === 'seguridad') cargarLogs()
+  else cargarLogsAplicacion()
 }
-)
+
+const abrirAplicacion = async () => {
+  activeView.value = 'aplicacion'
+  await cargarLogsAplicacion()
+}
+
+const volverSeguridad = async () => {
+  activeView.value = 'seguridad'
+  await cargarLogs()
+}
+
+const formatDate = (value) => {
+  if (!value) return '-'
+  return new Intl.DateTimeFormat('es-BO', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value))
+}
 
 onMounted(cargarLogs)
-
 </script>
-
-
 
 <style scoped>
 
@@ -346,287 +414,196 @@ min-width:78px;
 
 border-radius:8px;
 
-background:
-rgba(255,255,255,.10);
+background:rgba(255,255,255,.12);
+
+text-align:center;
 }
 
 .metric-box strong{
+font-size:18px;
 display:block;
-font-size:16px;
 }
 
 .metric-box span{
 font-size:10px;
+text-transform:uppercase;
+opacity:.8;
 }
 
 .metric-box.critical{
-border:
-1px solid rgba(255,120,120,.4);
+background:#c0392b;
 }
-
-
-
-/* BOTON */
 
 .refresh-btn{
-
-border:none;
-
-background:white;
-
 padding:8px 14px;
-
-height:36px;
-
+border:none;
 border-radius:8px;
-
-font-size:13px;
-
-font-weight:700;
-
+background:#3498db;
+color:white;
 cursor:pointer;
+font-weight:600;
 }
 
+.refresh-btn:hover{
+background:#2980b9;
+}
 
 
 /* FILTROS */
 
 .filters-card{
-
-display:flex;
-gap:16px;
+display:grid;
+grid-template-columns: 2fr 1fr 1.5fr;
+gap:12px;
 align-items:center;
 
-background:#f4f4f4;
-
-padding:14px 18px;
-
-border-radius:14px;
-
-margin-bottom:20px;
+background:white;
+padding:14px;
+border-radius:10px;
+margin-bottom:16px;
+box-shadow:0 1px 4px rgba(0,0,0,.06);
 }
 
 .filters-card input,
 .filters-card select{
-
-padding:10px 12px;
-
+padding:9px 10px;
+border:1px solid #cfd6e2;
 border-radius:8px;
-
-border:1px solid #ccc;
+font-size:14px;
 }
-
-.filters-card input{
-min-width:260px;
-}
-
-
-
-/* SWITCH */
 
 .critical-filter{
-
 display:flex;
 align-items:center;
-gap:14px;
-
-padding-left:14px;
-
-border-left:1px solid #ddd;
+justify-content:flex-end;
+gap:10px;
+font-size:13px;
 }
-
-.filter-caption{
-font-size:14px;
-font-weight:600;
-white-space:nowrap;
-}
-
 
 .switch{
 position:relative;
 display:inline-block;
-
-width:52px;
-height:28px;
-}
-
-.switch input{
-opacity:0;
-width:0;
-height:0;
-}
-
-.slider{
-
-position:absolute;
-
-top:0;
-left:0;
-right:0;
-bottom:0;
-
-cursor:pointer;
-
-background:#ccc;
-
-border-radius:30px;
-
-transition:.3s;
-}
-
-.slider:before{
-
-content:"";
-
-position:absolute;
-
-height:20px;
-width:20px;
-
-left:4px;
-top:4px;
-
-background:white;
-
-border-radius:50%;
-
-transition:.3s;
-}
-
-.switch input:checked + .slider{
-background:#192847;
-}
-
-.switch input:checked + .slider:before{
-transform:translateX(24px);
-}
-
-
-
-/* LOADING */
-
-.loading-box{
-
-margin-top:30px;
-
-padding:45px;
-
-display:flex;
-flex-direction:column;
-align-items:center;
-gap:18px;
-
-background:white;
-
-border-radius:16px;
-
-box-shadow:
-0 6px 18px rgba(0,0,0,.08);
-}
-
-.spinner{
-
 width:42px;
-height:42px;
-
-border:4px solid #ddd;
-
-border-top:4px solid #192847;
-
+height:22px;
+}
+.switch input{display:none;}
+.slider{
+position:absolute;
+inset:0;
+background:#bbb;
+border-radius:22px;
+transition:.2s;
+cursor:pointer;
+}
+.slider::before{
+content:'';
+position:absolute;
+height:18px; width:18px;
+left:2px; top:2px;
+background:white;
 border-radius:50%;
-
-animation:girar 1s linear infinite;
+transition:.2s;
 }
-
-@keyframes girar{
-
-from{
-transform:rotate(0deg);
-}
-
-to{
-transform:rotate(360deg);
-}
-
-}
-
+.switch input:checked + .slider{ background:#c0392b; }
+.switch input:checked + .slider::before{ transform:translateX(20px); }
 
 
 /* TABLA */
 
 .table-wrap{
+background:white;
+border-radius:10px;
 overflow:auto;
+box-shadow:0 1px 4px rgba(0,0,0,.06);
 }
 
 table{
-
 width:100%;
-
 border-collapse:collapse;
+}
 
-background:white;
-
-border-radius:14px;
-
-overflow:hidden;
-
-box-shadow:
-0 6px 18px rgba(0,0,0,.08);
+th, td{
+text-align:left;
+padding:10px 12px;
+border-bottom:1px solid #eef1f6;
+font-size:13px;
 }
 
 th{
-background:#192847;
-color:white;
-}
-
-th,td{
-padding:14px;
-border:1px solid #ddd;
-}
-
-.severity{
+background:#f5f7fb;
 font-weight:700;
 }
 
-.severity.alta,
-.severity.critica{
-color:#b00020;
+.severity{
+padding:3px 8px;
+border-radius:10px;
+font-weight:700;
+font-size:11px;
+display:inline-block;
+}
+.severity.baja{ background:#dff0d8; color:#3c763d; }
+.severity.media{ background:#fcf8e3; color:#8a6d3b; }
+.severity.alta{ background:#f2dede; color:#a94442; }
+.severity.critica{ background:#a94442; color:white; }
+
+
+/* LOADING */
+
+.loading-box{
+text-align:center;
+padding:30px;
+color:#666;
+}
+
+.spinner{
+margin:0 auto 12px;
+width:32px; height:32px;
+border:3px solid #ccc;
+border-top-color:#3498db;
+border-radius:50%;
+animation:spin 0.9s linear infinite;
+}
+
+@keyframes spin{
+to{ transform:rotate(360deg); }
 }
 
 .error-message{
+background:#f2dede;
+color:#a94442;
+padding:10px 14px;
+border-radius:8px;
 margin-bottom:14px;
-color:#b00020;
 }
 
 
+/* SWITCH ENTRE VISTAS */
 
-/* RESPONSIVE */
-
-@media(max-width:900px){
-
-.audit-header{
-flex-direction:column;
-align-items:flex-start;
+.extra-actions{
+margin-top:18px;
+display:flex;
+justify-content:center;
 }
 
-.header-right{
-flex-wrap:wrap;
+.switch-view-btn{
+padding:10px 22px;
+border:none;
+border-radius:8px;
+background:#192847;
+color:white;
+font-weight:700;
+font-size:14px;
+cursor:pointer;
 }
 
-.filters-card{
-flex-direction:column;
-align-items:stretch;
+.switch-view-btn:hover{
+background:#0f1c36;
 }
 
-.filters-card input{
-min-width:auto;
+.switch-view-btn.back{
+background:#7f8c8d;
 }
-
-.critical-filter{
-border-left:none;
-padding-left:0;
+.switch-view-btn.back:hover{
+background:#636e6f;
 }
-
-}
-
 </style>
