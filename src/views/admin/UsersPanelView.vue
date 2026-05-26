@@ -138,34 +138,159 @@ const closeUserPopup = () => {
 }
 
 const saveUser = async (userData) => {
+  const nameRegex = /^[A-Za-zÁÉÍÓÚáéíóúÜüÑñ\s]+$/
+  const phoneRegex = /^\d{7,10}$/
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  const nombre = userData.nombre?.trim() || ''
+  const primerApellido = userData.primer_apellido?.trim() || ''
+  const segundoApellido = userData.segundo_apellido?.trim() || null
+  const telefono = String(userData.telefono ?? '').trim()
+  const rolId = userData.rol_id_rol?.trim() || ''
+
+  const correoContacto = userData.correo_contacto?.trim().toLowerCase() || ''
+  const codigoVerificacion = userData.codigo_verificacion?.trim() || ''
+  const correo = userData.correo?.trim().toLowerCase() || ''
+
+  if (!nombre || nombre.length < 2 || nombre.length > 50 || !nameRegex.test(nombre)) {
+    Swal.fire({
+      title: 'Datos inválidos',
+      text: 'El nombre debe tener entre 2 y 50 caracteres y contener solo letras.',
+      icon: 'error',
+      confirmButtonText: 'OK',
+      customClass: { confirmButton: 'swal2-confirm' },
+    })
+    return
+  }
+
+  if (
+    !primerApellido ||
+    primerApellido.length < 2 ||
+    primerApellido.length > 50 ||
+    !nameRegex.test(primerApellido)
+  ) {
+    Swal.fire({
+      title: 'Datos inválidos',
+      text: 'El primer apellido debe tener entre 2 y 50 caracteres y contener solo letras.',
+      icon: 'error',
+      confirmButtonText: 'OK',
+      customClass: { confirmButton: 'swal2-confirm' },
+    })
+    return
+  }
+
+  if (
+    segundoApellido &&
+    (segundoApellido.length > 50 || !nameRegex.test(segundoApellido))
+  ) {
+    Swal.fire({
+      title: 'Datos inválidos',
+      text: 'El segundo apellido debe contener solo letras y no superar los 50 caracteres.',
+      icon: 'error',
+      confirmButtonText: 'OK',
+      customClass: { confirmButton: 'swal2-confirm' },
+    })
+    return
+  }
+
+  if (!phoneRegex.test(telefono)) {
+    Swal.fire({
+      title: 'Datos inválidos',
+      text: 'El teléfono debe tener entre 7 y 10 dígitos numéricos.',
+      icon: 'error',
+      confirmButtonText: 'OK',
+      customClass: { confirmButton: 'swal2-confirm' },
+    })
+    return
+  }
+
+  if (!rolId) {
+    Swal.fire({
+      title: 'Datos inválidos',
+      text: 'Debes seleccionar un rol.',
+      icon: 'error',
+      confirmButtonText: 'OK',
+      customClass: { confirmButton: 'swal2-confirm' },
+    })
+    return
+  }
+
+  const selectedRole = roles.value.find((role) => role.id_rol === rolId)
+
+  if (!selectedRole || !selectedRole.activo) {
+    Swal.fire({
+      title: 'Rol no válido',
+      text: 'Debes seleccionar un rol activo.',
+      icon: 'error',
+      confirmButtonText: 'OK',
+      customClass: { confirmButton: 'swal2-confirm' },
+    })
+    return
+  }
+
+  if (isEditingUser.value) {
+    if (!correo || !emailRegex.test(correo)) {
+      Swal.fire({
+        title: 'Datos inválidos',
+        text: 'El correo institucional del usuario no es válido.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+        customClass: { confirmButton: 'swal2-confirm' },
+      })
+      return
+    }
+  } else {
+    if (!correoContacto || !emailRegex.test(correoContacto)) {
+      Swal.fire({
+        title: 'Datos inválidos',
+        text: 'Ingresa un correo de contacto válido.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+        customClass: { confirmButton: 'swal2-confirm' },
+      })
+      return
+    }
+
+    if (!/^\d{6}$/.test(codigoVerificacion)) {
+      Swal.fire({
+        title: 'Datos inválidos',
+        text: 'El código de verificación debe contener 6 dígitos.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+        customClass: { confirmButton: 'swal2-confirm' },
+      })
+      return
+    }
+  }
+
   try {
     if (isEditingUser.value) {
       await updateSecurityUser(userData.id, {
-        nombre: userData.nombre,
-        primer_apellido: userData.primer_apellido,
-        segundo_apellido: userData.segundo_apellido || null,
-        correo: userData.correo,
-        telefono: userData.telefono ? Number(userData.telefono) : null,
-        rol_id_rol: userData.rol_id_rol,
+        nombre,
+        primer_apellido: primerApellido,
+        segundo_apellido: segundoApellido,
+        correo,
+        telefono: Number(telefono),
+        rol_id_rol: rolId,
       })
     } else {
-    await createSecurityUser({
-      nombre: userData.nombre,
-      primer_apellido: userData.primer_apellido,
-      segundo_apellido: userData.segundo_apellido || null,
-      correo_contacto: userData.correo_contacto.trim().toLowerCase(),
-      codigo_verificacion: userData.codigo_verificacion.trim(),
-      telefono: userData.telefono ? Number(userData.telefono) : null,
-      rol_id_rol: userData.rol_id_rol,
-      enviar_credenciales: !!userData.enviarCredenciales,
-    })
+      await createSecurityUser({
+        nombre,
+        primer_apellido: primerApellido,
+        segundo_apellido: segundoApellido,
+        correo_contacto: correoContacto,
+        codigo_verificacion: codigoVerificacion,
+        telefono: Number(telefono),
+        rol_id_rol: rolId,
+        enviar_credenciales: !!userData.enviarCredenciales,
+      })
     }
 
     if (userData.enviarCredenciales && userData.id) {
       try {
         await sendUserCredentials(userData.id)
       } catch {
-        // placeholder por ahora
+        // Se conserva el comportamiento actual si falla el reenvío.
       }
     }
 

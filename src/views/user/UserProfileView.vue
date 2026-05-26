@@ -43,8 +43,7 @@ const validateForm = () => {
   successMessage.value = ''
 
   const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/
-  const phoneRegex = /^\d+$/
-
+  const phoneRegex = /^[0-9]{7,10}$/
   if (!emailRegex.test(form.value.email)) {
     errors.value.email = 'Por favor ingresa un correo electrónico válido.'
     valid = false
@@ -56,24 +55,16 @@ const validateForm = () => {
   }
 
   if (!phoneRegex.test(form.value.phone)) {
-    errors.value.phone =
-      'Por favor ingresa un número de teléfono válido. Solo se permiten números.'
-    valid = false
-  }
+  errors.value.phone =
+    'El teléfono debe tener entre 7 y 10 dígitos numéricos.'
+  valid = false
+}
 
   return valid
 }
 
 const handleSubmit = async () => {
-  errors.value.phone = ''
-  generalError.value = ''
-  successMessage.value = ''
-
-  const phoneRegex = /^\d+$/
-  if (!phoneRegex.test(form.value.phone)) {
-    errors.value.phone = 'Por favor ingresa un número de teléfono válido. Solo se permiten números.'
-    return
-  }
+  if (!validateForm()) return
 
   try {
     const updatedUser = await updateCurrentUser({
@@ -160,7 +151,18 @@ onMounted(async () => {
           <div class="input-container">
             <label for="phone">Teléfono</label>
             <div class="input-with-icon">
-              <input id="phone" v-model="form.phone" type="text" name="phone" required />
+              <input
+                id="phone"
+                v-model="form.phone"
+                type="text"
+                name="phone"
+                inputmode="numeric"
+                minlength="7"
+                maxlength="10"
+                pattern="[0-9]{7,10}"
+                placeholder="70000000"
+                required
+              />
               <i class="fas fa-edit"></i>
               <span id="error-phone" class="error-message">{{ errors.phone }}</span>
             </div>

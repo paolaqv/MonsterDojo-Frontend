@@ -166,6 +166,9 @@ const selectedRoleName = computed(() => {
   const role = props.roles.find((r) => r.id_rol === userForm.rol_id_rol)
   return role?.nombre || 'Sin rol'
 })
+const availableRoles = computed(() =>
+  props.roles.filter((role) => role.activo === true)
+)
 
 const effectiveEmail = computed(() => {
   return props.isEditing ? userForm.correo || generatedEmailPreview.value : generatedEmailPreview.value
@@ -239,8 +242,8 @@ const validateStepZero = () => {
   if (!nombre) {
     errors.nombre = 'El nombre es obligatorio.'
     valid = false
-  } else if (nombre.length < 2) {
-    errors.nombre = 'El nombre debe tener al menos 2 caracteres.'
+  } else if (nombre.length < 2 || nombre.length > 50) {
+    errors.nombre = 'El nombre debe tener entre 2 y 50 caracteres.'
     valid = false
   } else if (!nameRegex.test(nombre)) {
     errors.nombre = 'El nombre solo debe contener letras y espacios.'
@@ -250,17 +253,22 @@ const validateStepZero = () => {
   if (!primerApellido) {
     errors.primer_apellido = 'El primer apellido es obligatorio.'
     valid = false
-  } else if (primerApellido.length < 2) {
-    errors.primer_apellido = 'El primer apellido debe tener al menos 2 caracteres.'
+  } else if (primerApellido.length < 2 || primerApellido.length > 50) {
+    errors.primer_apellido = 'El primer apellido debe tener entre 2 y 50 caracteres.'
     valid = false
   } else if (!nameRegex.test(primerApellido)) {
     errors.primer_apellido = 'El primer apellido solo debe contener letras y espacios.'
     valid = false
   }
 
-  if (segundoApellido && !nameRegex.test(segundoApellido)) {
-    errors.segundo_apellido = 'El segundo apellido solo debe contener letras y espacios.'
-    valid = false
+  if (segundoApellido) {
+    if (segundoApellido.length > 50) {
+      errors.segundo_apellido = 'El segundo apellido no debe superar los 50 caracteres.'
+      valid = false
+    } else if (!nameRegex.test(segundoApellido)) {
+      errors.segundo_apellido = 'El segundo apellido solo debe contener letras y espacios.'
+      valid = false
+    }
   }
 
   if (!telefono) {
@@ -270,6 +278,10 @@ const validateStepZero = () => {
     errors.telefono = 'El teléfono debe tener entre 7 y 10 dígitos numéricos.'
     valid = false
   }
+  if (props.isEditing && correoContacto && !emailRegex.test(correoContacto)) {
+  errors.correo_contacto = 'Ingresa un correo válido.'
+  valid = false
+}
 
   if (!props.isEditing) {
     if (!correoContacto) {
@@ -310,8 +322,18 @@ const validateStepOne = () => {
     return false
   }
 
+  const selectedRole = props.roles.find(
+    (role) => role.id_rol === userForm.rol_id_rol
+  )
+
+  if (!selectedRole || !selectedRole.activo) {
+    errors.rol_id_rol = 'Debes seleccionar un rol activo.'
+    return false
+  }
+
   return true
 }
+
 const sendVerificationCode = async () => {
   try {
     verificationError.value = ''
@@ -371,7 +393,25 @@ const closePopup = () => {
 }
 
 const saveUser = () => {
-  emit('save', JSON.parse(JSON.stringify(userForm)))
+  if (!validateStepZero()) {
+    currentStep.value = 0
+    return
+  }
+
+  if (!validateStepOne()) {
+    currentStep.value = 1
+    return
+  }
+
+  emit('save', {
+    ...JSON.parse(JSON.stringify(userForm)),
+    nombre: userForm.nombre.trim(),
+    primer_apellido: userForm.primer_apellido.trim(),
+    segundo_apellido: userForm.segundo_apellido.trim(),
+    correo_contacto: userForm.correo_contacto.trim().toLowerCase(),
+    telefono: String(userForm.telefono).trim(),
+    codigo_verificacion: userForm.codigo_verificacion.trim(),
+  })
 }
 </script>
 
@@ -421,15 +461,25 @@ const saveUser = () => {
           <div v-show="currentStep.value === 0" class="role-step-panel">
             <div class="form-group">
               <label>Nombre</label>
-              <input v-model="userForm.nombre" type="text" placeholder="Nombre" />
+              <input
+                v-model="userForm.nombre"
+                type="text"
+                maxlength="50"
+                placeholder="Nombre"
+              />
               <span v-if="errors.nombre" class="error-message">
-  {{ errors.nombre }}
-</span>
+                {{ errors.nombre }}
+              </span>
             </div>
 
             <div class="form-group">
               <label>Primer apellido</label>
-              <input v-model="userForm.primer_apellido" type="text" placeholder="Primer apellido" />
+              <input
+                v-model="userForm.primer_apellido"
+                type="text"
+                maxlength="50"
+                placeholder="Primer apellido"
+              />
               <span v-if="errors.primer_apellido" class="error-message">
   {{ errors.primer_apellido }}
 </span>
@@ -437,22 +487,31 @@ const saveUser = () => {
 
             <div class="form-group">
               <label>Segundo apellido</label>
-              <input v-model="userForm.segundo_apellido" type="text" placeholder="Segundo apellido" />
+              <input
+                v-model="userForm.segundo_apellido"
+                type="text"
+                maxlength="50"
+                placeholder="Segundo apellido"
+               />
               <span v-if="errors.segundo_apellido" class="error-message">
-  {{ errors.segundo_apellido }}
-</span>
+                {{ errors.segundo_apellido }}
+              </span>
             </div>
 
             <div class="form-group">
               <label>Teléfono</label>
-<input
-  v-model="userForm.telefono"
-  type="text"
-  maxlength="10"
-  placeholder="70000000"
-/>              <span v-if="errors.telefono" class="error-message">
-  {{ errors.telefono }}
-</span>
+              <input
+                v-model="userForm.telefono"
+                type="text"
+                inputmode="numeric"
+                minlength="7"
+                maxlength="10"
+                pattern="[0-9]{7,10}"
+                placeholder="70000000"
+              />             
+              <span v-if="errors.telefono" class="error-message">
+                {{ errors.telefono }}
+              </span>
             </div>
               <div class="form-group">
                 <label>Correo real de contacto</label>
@@ -528,7 +587,7 @@ const saveUser = () => {
               <label>Rol</label>
               <select v-model="userForm.rol_id_rol">
                 <option value="">Seleccione un rol</option>
-                <option v-for="role in roles" :key="role.id_rol" :value="role.id_rol">
+                <option v-for="role in availableRoles" :key="role.id_rol" :value="role.id_rol">
                   {{ role.nombre }} ({{ role.id_rol }})
                 </option>
               </select>

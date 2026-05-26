@@ -265,7 +265,23 @@ const submitConfirmarReserva = async (event) => {
   if (!mesaSeleccionada.value) {
     return
   }
+  const cantidadesInvalidas = productosSeleccionados.value.some(
+    (item) => !item.esJuego && (!Number.isInteger(Number(item.cantidad)) || Number(item.cantidad) < 1)
+  )
 
+  if (cantidadesInvalidas) {
+    Swal.fire('Aviso', 'Las cantidades deben ser números enteros mayores a cero.', 'warning')
+    return
+  }
+  if (!fecha.value || !horaInicio.value || !horaFin.value) {
+    Swal.fire('Aviso', 'Debes completar fecha y horario de la reserva.', 'warning')
+    return
+  }
+
+  if (horaFin.value <= horaInicio.value) {
+    Swal.fire('Aviso', 'La hora de fin debe ser mayor que la hora de inicio.', 'warning')
+    return
+  }
   const productosPayload = productosSeleccionados.value
     .filter((item) => !item.esJuego)
     .map((item) => ({
