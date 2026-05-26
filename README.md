@@ -59,4 +59,5 @@ npm install sweetalert2
 npm install lucide-vue-next @vueuse/motion v-wave
 npm install vue-recaptcha
 npm install @unhead/vue
+npm install vue-loading-overlay@^6.0
 ```

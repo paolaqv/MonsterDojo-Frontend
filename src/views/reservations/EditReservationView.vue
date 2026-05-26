@@ -234,7 +234,18 @@ const syncSelectionFromReservation = () => {
 const submitForm = async () => {
   try {
     saving.value = true
+    const cantidadesInvalidas = productosSeleccionados.value.some(
+  (item) => !item.esJuego && (!Number.isInteger(Number(item.cantidad)) || Number(item.cantidad) < 1)
+)
 
+if (cantidadesInvalidas) {
+  await Swal.fire(
+    'Aviso',
+    'Las cantidades deben ser números enteros mayores a cero.',
+    'warning'
+  )
+  return
+}
     const { date, start_time, end_time } = formatDateParts(reserva.value.fecha_hora)
 
     const productosPayload = productosSeleccionados.value
@@ -257,7 +268,6 @@ const payload = {
   productos: productosPayload,
   ...(selectedJuegoId.value ? { juego_id: selectedJuegoId.value } : {}),
 }
-console.log('payload update reservation =>', payload)
     await updateReservationCheckout(reservationId.value, payload)
 
     await Swal.fire({
