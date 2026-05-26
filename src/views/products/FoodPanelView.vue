@@ -12,12 +12,14 @@ import { usePermissions } from '@/composables/usePermissions'
 import {
   createProduct,
   createProductCategory,
+  deleteProduct,
   getProductById,
   getProductCategories,
   getProducts,
   updateProduct,
   uploadProductImage,
 } from '@/services/products.service'
+import { uploadImage } from '@/services/uploads.service'
 
 const router = useRouter()
 const { role, hasPermission } = usePermissions()
@@ -36,7 +38,6 @@ const search = ref('')
 const groupBy = ref('')
 const categorias = ref([])
 const productos = ref([])
-const selectedCategory = ref('')
 
 const showAddProductPopup = ref(false)
 const showEditProductPopup = ref(false)
@@ -124,9 +125,7 @@ const loadData = async () => {
       text: 'No se pudieron cargar los productos.',
       icon: 'error',
       confirmButtonText: 'OK',
-      customClass: {
-        confirmButton: 'swal2-confirm',
-      },
+      customClass: { confirmButton: 'swal2-confirm' },
     })
   }
 }
@@ -204,9 +203,7 @@ const clearEditForm = () => {
 }
 
 const clearCategoryForm = () => {
-  categoryForm.value = {
-    nombre: '',
-  }
+  categoryForm.value = { nombre: '' }
 }
 
 const showTab = (n) => {
@@ -218,11 +215,10 @@ const showEditTab = (n) => {
 }
 
 const confirmCancel = (formType) => {
-  let confirmMessage = '¿Está seguro de cancelar? Se perderán los datos.'
-
-  if (formType === 'editForm') {
-    confirmMessage = '¿Está seguro de cancelar? Se perderán sus cambios.'
-  }
+  const confirmMessage =
+    formType === 'editForm'
+      ? '¿Está seguro de cancelar? Se perderán sus cambios.'
+      : '¿Está seguro de cancelar? Se perderán los datos.'
 
   Swal.fire({
     title: '¿Está seguro?',
@@ -231,22 +227,18 @@ const confirmCancel = (formType) => {
     showCancelButton: true,
     confirmButtonText: 'Sí, cancelar',
     cancelButtonText: 'No, mantener',
-    customClass: {
-      confirmButton: 'swal2-confirm',
-      cancelButton: 'swal2-cancel',
-    },
+    customClass: { confirmButton: 'swal2-confirm', cancelButton: 'swal2-cancel' },
   }).then((result) => {
-    if (result.isConfirmed) {
-      if (formType === 'regForm') {
-        closePopup()
-        clearForm()
-      } else if (formType === 'editForm') {
-        closeEditPopup()
-        clearEditForm()
-      } else {
-        closeCategoryPopup()
-        clearCategoryForm()
-      }
+    if (!result.isConfirmed) return
+    if (formType === 'regForm') {
+      closePopup()
+      clearForm()
+    } else if (formType === 'editForm') {
+      closeEditPopup()
+      clearEditForm()
+    } else {
+      closeCategoryPopup()
+      clearCategoryForm()
     }
   })
 }
@@ -265,9 +257,7 @@ const showSuccessMessage = (popupType, message) => {
     text: message,
     icon: 'success',
     confirmButtonText: 'OK',
-    customClass: {
-      confirmButton: 'swal2-confirm',
-    },
+    customClass: { confirmButton: 'swal2-confirm' },
   }).then(async () => {
     if (popupType === 'contactPopup') {
       closePopup()
@@ -279,13 +269,13 @@ const showSuccessMessage = (popupType, message) => {
       closeCategoryPopup()
       clearCategoryForm()
     }
-
     await loadData()
   })
 }
 
 const handleProductoSubmit = async (event) => {
   event.preventDefault()
+  if (!canManageProducts.value) return
 
   if (!canManageProducts.value) return
 
@@ -317,36 +307,36 @@ const handleProductoSubmit = async (event) => {
         'Hubo un problema al registrar el producto.',
       icon: 'error',
       confirmButtonText: 'OK',
-      customClass: {
-        confirmButton: 'swal2-confirm',
-      },
+      customClass: { confirmButton: 'swal2-confirm' },
     })
   }
 }
 
 const handleCategorySubmit = async (event) => {
   event.preventDefault()
+  if (!canManageProducts.value) return
 
   try {
-    await createProductCategory({
-      nombre: categoryForm.value.nombre,
-    })
-
+    await createProductCategory({ nombre: categoryForm.value.nombre })
     showSuccessMessage('categoryPopup', 'Categoría registrada con éxito')
   } catch (error) {
     Swal.fire({
       title: 'Error',
-      text: error?.response?.data?.detail || 'Hubo un problema al registrar la categoría.',
+      text:
+        error?.normalizedMessage ||
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.detail ||
+        'Hubo un problema al registrar la categoría.',
       icon: 'error',
       confirmButtonText: 'OK',
-      customClass: {
-        confirmButton: 'swal2-confirm',
-      },
+      customClass: { confirmButton: 'swal2-confirm' },
     })
   }
 }
 
 const openEditPopup = async (productId) => {
+  if (!canManageProducts.value) return
+
   try {
     const response = await getProductById(productId)
 
@@ -391,6 +381,7 @@ const openEditPopup = async (productId) => {
 
 const handleEditProductoSubmit = async (event) => {
   event.preventDefault()
+  if (!canManageProducts.value) return
 
   if (!canManageProducts.value) return
 
@@ -423,15 +414,14 @@ const handleEditProductoSubmit = async (event) => {
         'Hubo un problema al actualizar el producto.',
       icon: 'error',
       confirmButtonText: 'OK',
-      customClass: {
-        confirmButton: 'swal2-confirm',
-      },
+      customClass: { confirmButton: 'swal2-confirm' },
     })
   }
 }
 
 const confirmDelete = (event, producto) => {
   event.preventDefault()
+  if (!canManageProducts.value) return
 
   Swal.fire({
     title: '¿Está seguro?',
@@ -440,45 +430,31 @@ const confirmDelete = (event, producto) => {
     showCancelButton: true,
     confirmButtonText: 'Sí, archivar',
     cancelButtonText: 'No, cancelar',
-    customClass: {
-      confirmButton: 'swal2-confirm',
-      cancelButton: 'swal2-cancel',
-    },
+    customClass: { confirmButton: 'swal2-confirm', cancelButton: 'swal2-cancel' },
   }).then(async (result) => {
-    if (result.isConfirmed) {
-      try {
-        await updateProduct(producto.id_producto, {
-          nombre: producto.nombre,
-          descripcion: producto.descripcion,
-          precio: Number(producto.precio),
-          max_personas: Number(producto.max_personas),
-          imagen: producto.imagen,
-          categoria_producto_id_catProducto:
-            producto.categoria_producto_id_catProducto ??
-            producto.categoria_producto?.id_catProducto ??
-            producto.categoria_producto?.id_categoria,
-          activo: false,
-        })
-
-        Swal.fire('¡Archivado!', 'El producto ha sido archivado.', 'success')
-        await loadData()
-      } catch (error) {
-        Swal.fire({
-          title: 'Error',
-          text: 'Hubo un problema al archivar el producto.',
-          icon: 'error',
-          confirmButtonText: 'OK',
-          customClass: {
-            confirmButton: 'swal2-confirm',
-          },
-        })
-      }
+    if (!result.isConfirmed) return
+    try {
+      await deleteProduct(producto.id_producto)
+      Swal.fire('¡Archivado!', 'El producto ha sido archivado.', 'success')
+      await loadData()
+    } catch (error) {
+      Swal.fire({
+        title: 'Error',
+        text:
+          error?.normalizedMessage ||
+          error?.response?.data?.error?.message ||
+          'Hubo un problema al archivar el producto.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+        customClass: { confirmButton: 'swal2-confirm' },
+      })
     }
   })
 }
 
 const confirmUnarchive = (event, producto) => {
   event.preventDefault()
+  if (!canManageProducts.value) return
 
   Swal.fire({
     title: '¿Está seguro?',
@@ -487,31 +463,26 @@ const confirmUnarchive = (event, producto) => {
     showCancelButton: true,
     confirmButtonText: 'Sí, desarchivar',
     cancelButtonText: 'No, cancelar',
-    customClass: {
-      confirmButton: 'swal2-confirm',
-      cancelButton: 'swal2-cancel',
-    },
+    customClass: { confirmButton: 'swal2-confirm', cancelButton: 'swal2-cancel' },
   }).then(async (result) => {
-    if (result.isConfirmed) {
-      try {
-        await updateProduct(producto.id_producto, {
-          nombre: producto.nombre,
-          descripcion: producto.descripcion,
-          precio: Number(producto.precio),
-          max_personas: Number(producto.max_personas),
-          imagen: producto.imagen,
-          categoria_producto_id_catProducto:
-            producto.categoria_producto_id_catProducto ??
-            producto.categoria_producto?.id_catProducto ??
-            producto.categoria_producto?.id_categoria,
-          activo: true,
-        })
-
-        Swal.fire('¡Desarchivado!', 'El producto ha sido desarchivado.', 'success')
-        await loadData()
-      } catch (error) {
-        Swal.fire('Error', 'No se pudo desarchivar el producto.', 'error')
-      }
+    if (!result.isConfirmed) return
+    try {
+      await updateProduct(producto.id_producto, {
+        nombre: producto.nombre,
+        descripcion: producto.descripcion,
+        precio: Number(producto.precio),
+        max_personas: Number(producto.max_personas),
+        imagen: producto.imagen,
+        categoria_producto_id_catProducto:
+          producto.categoria_producto_id_catProducto ??
+          producto.categoria_producto?.id_catProducto ??
+          producto.categoria_producto?.id_categoria,
+        activo: true,
+      })
+      Swal.fire('¡Desarchivado!', 'El producto ha sido desarchivado.', 'success')
+      await loadData()
+    } catch (error) {
+      Swal.fire('Error', 'No se pudo desarchivar el producto.', 'error')
     }
   })
 }
@@ -585,6 +556,11 @@ onMounted(async () => {
           </thead>
 
           <tbody>
+            <tr v-if="filteredProductos.length === 0">
+              <td :colspan="canManageProducts ? 8 : 7" style="text-align:center; padding:20px;">
+                No hay productos para mostrar.
+              </td>
+            </tr>
             <tr v-for="producto in filteredProductos" :key="producto.id_producto">
               <td>{{ producto.id_producto }}</td>
               <td>{{ producto.nombre }}</td>
@@ -970,7 +946,6 @@ onMounted(async () => {
               name="nombre"
               required
             />
-            <span id="error-categoria_nombre" class="error-message"></span>
           </div>
 
           <div class="buttons">
@@ -982,58 +957,54 @@ onMounted(async () => {
         </form>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
-    <!-- Estilos para las alertas -->
-    <style>
-        .swal2-cancel {
-            background-color: #192847 !important;
-            color: #fff !important;
-        }
-        .swal2-confirm {
-            background-color: #d48600 !important;
-            color: #fff !important;
-            width: 120px !important; 
-        }
 
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
+<style>
+.swal2-cancel {
+  background-color: #192847 !important;
+  color: #fff !important;
+}
+.swal2-confirm {
+  background-color: #d48600 !important;
+  color: #fff !important;
+  width: 120px !important;
+}
 
-        .action-buttons button {
-            background-color: var(--alt-primary-color);
-            color: var(--light-color);
-            border: none;
-            padding: 10px;
-            border-radius: 10px;
-            cursor: pointer;
-        }
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
 
-        .action-buttons button i {
-            pointer-events: none;
-        }
+.action-buttons button {
+  background-color: var(--alt-primary-color);
+  color: var(--light-color);
+  border: none;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
 
-        .search-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 10px;
-            gap: 20px; 
-        }
+.action-buttons button i {
+  pointer-events: none;
+}
 
-        .search-container button,
-        .group-by-container button,
-        .add-buttons button {
-            margin-left: 10px;
-            margin-right: 10px;
-        }
+.search-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  gap: 20px;
+}
 
-        .add-buttons {
-            display: flex;
-            gap: 20px; /* Espacio entre los botones de agregar producto y categoría */
-        }
+.search-container button,
+.group-by-container button,
+.add-buttons button {
+  margin-left: 10px;
+  margin-right: 10px;
+}
 
         .add-product button,
         .add-category button {

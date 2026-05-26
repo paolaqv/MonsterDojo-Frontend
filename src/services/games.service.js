@@ -41,6 +41,4 @@ export const uploadGameImage = async (file) => {
       'Content-Type': undefined,
     },
   })
-
-  return data
 }

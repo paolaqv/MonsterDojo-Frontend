@@ -149,6 +149,4 @@ button[type="button"]:hover {
     color: #d48600;
 }
 
-.tab {
-    display: none;
-}
+/* Eliminado: '.tab { display:none }' rompia v-show de Vue. */
