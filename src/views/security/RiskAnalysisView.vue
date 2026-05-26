@@ -20,8 +20,9 @@
             <thead>
               <tr>
                 <th>Nombre</th>
-                <th>Descripción</th>
-                <th>Probabilidad</th>
+                <th>Activo</th>
+                <th>Amenaza</th>
+                <th>Prob.</th>
                 <th>Impacto</th>
                 <th>Nivel</th>
                 <th>Estado</th>
@@ -30,8 +31,9 @@
             </thead>
             <tbody>
               <tr v-for="riesgo in riesgos" :key="riesgo.id">
-                <td>{{ truncate(riesgo.nombre, 30) }}</td>
-                <td>{{ truncate(riesgo.descripcion, 40) }}</td>
+                <td>{{ truncate(riesgo.nombre, 25) }}</td>
+                <td>{{ truncate(riesgo.activo_informacion, 20) || '-' }}</td>
+                <td>{{ truncate(riesgo.amenaza_vulnerabilidad, 25) || '-' }}</td>
                 <td>
                   <span :class="`badge prob-${riesgo.probabilidad_inherente?.toLowerCase()}`">
                     {{ riesgo.probabilidad_inherente }}
@@ -63,12 +65,12 @@
                     📊
                   </button>
                 </td>
-              </tr>
+               </tr>
               <tr v-if="riesgos.length === 0">
-                <td colspan="7" class="empty-row">No hay riesgos registrados. Haz clic en "+ Nuevo Riesgo" para comenzar.</td>
+                <td colspan="8" class="empty-row">No hay riesgos registrados. Haz clic en "+ Nuevo Riesgo" para comenzar.</td>
               </tr>
             </tbody>
-           </table>
+          </table>
         </div>
       </div>
     </div>
@@ -207,7 +209,7 @@ onMounted(() => {
 .risk-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 800px;
+  min-width: 900px;
 }
 
 .risk-table th,

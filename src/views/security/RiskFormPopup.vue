@@ -22,6 +22,18 @@
             <textarea v-model="form.descripcion" rows="2" placeholder="Describe el riesgo..."></textarea>
           </div>
 
+          <!-- 🆕 NUEVO: Activo de información -->
+          <div class="form-group">
+            <label>Activo de información</label>
+            <input v-model="form.activo_informacion" type="text" placeholder="Ej: Base de datos de clientes, Servidor, Información financiera" />
+          </div>
+
+          <!-- 🆕 NUEVO: Amenaza / Vulnerabilidad -->
+          <div class="form-group">
+            <label>Amenaza / Vulnerabilidad</label>
+            <textarea v-model="form.amenaza_vulnerabilidad" rows="2" placeholder="Ej: Ataque de hacking, Fallo humano, Desastre natural"></textarea>
+          </div>
+
           <div class="form-row">
             <div class="form-group">
               <label>Probabilidad inherente</label>
@@ -152,6 +164,8 @@ const form = reactive({
   id: null,
   nombre: '',
   descripcion: '',
+  activo_informacion: '',           // 🆕 NUEVO
+  amenaza_vulnerabilidad: '',       // 🆕 NUEVO
   probabilidad_inherente: '',
   impacto_inherente: '',
   controles_existentes: '',
@@ -181,6 +195,8 @@ const resetForm = () => {
   form.id = null
   form.nombre = ''
   form.descripcion = ''
+  form.activo_informacion = ''
+  form.amenaza_vulnerabilidad = ''
   form.probabilidad_inherente = ''
   form.impacto_inherente = ''
   form.controles_existentes = ''
@@ -197,6 +213,8 @@ const loadRiskData = () => {
     form.id = props.riskData.id
     form.nombre = props.riskData.nombre || ''
     form.descripcion = props.riskData.descripcion || ''
+    form.activo_informacion = props.riskData.activo_informacion || ''
+    form.amenaza_vulnerabilidad = props.riskData.amenaza_vulnerabilidad || ''
     form.probabilidad_inherente = props.riskData.probabilidad_inherente || ''
     form.impacto_inherente = props.riskData.impacto_inherente || ''
     form.controles_existentes = props.riskData.controles_existentes || ''
@@ -225,6 +243,8 @@ const saveRisk = async () => {
   const payload = {
     nombre: form.nombre,
     descripcion: form.descripcion,
+    activo_informacion: form.activo_informacion,
+    amenaza_vulnerabilidad: form.amenaza_vulnerabilidad,
     probabilidad_inherente: form.probabilidad_inherente,
     impacto_inherente: form.impacto_inherente,
     nivel_inherente: nivelCalculado.value,
