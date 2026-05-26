@@ -24,6 +24,23 @@
           <span>Errores</span>
         </div>
 
+        <button
+          v-if="activeView === 'seguridad'"
+          type="button"
+          class="switch-view-btn header-switch"
+          @click="abrirAplicacion"
+        >
+          Ver logs de aplicación
+        </button>
+        <button
+          v-else
+          type="button"
+          class="switch-view-btn header-switch back"
+          @click="volverSeguridad"
+        >
+          Volver a logs de seguridad
+        </button>
+
         <button type="button" class="refresh-btn" @click="cargarVistaActual">
           Actualizar
         </button>
@@ -32,16 +49,32 @@
 
     <!-- ============== VISTA: LOGS DE SEGURIDAD / USUARIO ============== -->
     <template v-if="activeView === 'seguridad'">
-      <section class="filters-card">
+      <section class="filters-card filters-card--security">
         <input
           v-model.trim="busqueda"
           maxlength="100"
-          placeholder="Buscar evento, módulo o descripción"
+          placeholder="Buscar evento o descripción"
           @keyup.enter="cargarLogs"
         />
 
-        <select v-model="filtroSeveridad" @change="cargarLogs">
-          <option value="">Todas</option>
+        <input
+          v-model.trim="filtroModulo"
+          maxlength="100"
+          placeholder="Módulo (auth, usuarios, roles...)"
+        />
+
+        <input
+          v-model.trim="filtroEstado"
+          maxlength="20"
+          placeholder="Estado (OK, FALLIDO...)"
+        />
+
+        <select
+          v-model="filtroSeveridad"
+          :disabled="soloCriticos"
+          @change="cargarLogs"
+        >
+          <option value="">Severidad: todas</option>
           <option value="BAJA">BAJA</option>
           <option value="MEDIA">MEDIA</option>
           <option value="ALTA">ALTA</option>
@@ -49,7 +82,7 @@
         </select>
 
         <div class="critical-filter">
-          <span class="filter-caption">Mostrar solo eventos críticos</span>
+          <span class="filter-caption">Solo críticos</span>
           <label class="switch">
             <input
               v-model="soloCriticos"
@@ -93,45 +126,43 @@
               <td>{{ log.estado || '-' }}</td>
               <td>{{ log.descripcion || '-' }}</td>
             </tr>
+            <tr v-if="!logs.length">
+              <td colspan="6" class="empty-row">Sin registros para los filtros aplicados.</td>
+            </tr>
           </tbody>
         </table>
-      </div>
-
-      <div class="extra-actions">
-        <button
-          type="button"
-          class="switch-view-btn"
-          @click="abrirAplicacion"
-        >
-          Ver logs de aplicación
-        </button>
       </div>
     </template>
 
     <!-- ============== VISTA: LOGS DE APLICACION ============== -->
     <template v-else>
-      <section class="filters-card">
+      <section class="filters-card filters-card--app">
         <input
           v-model.trim="busquedaApp"
           maxlength="100"
-          placeholder="Buscar evento, módulo o descripción"
+          placeholder="Buscar evento, entidad o descripción"
           @keyup.enter="cargarLogsAplicacion"
         />
 
+        <input
+          v-model.trim="filtroModuloApp"
+          maxlength="100"
+          placeholder="Módulo (uploads, pagos, sistema...)"
+        />
+
+        <input
+          v-model.trim="filtroEstadoApp"
+          maxlength="20"
+          placeholder="Estado (OK, FAIL...)"
+        />
+
         <select v-model="filtroSeveridadApp" @change="cargarLogsAplicacion">
-          <option value="">Todas</option>
+          <option value="">Severidad: todas</option>
           <option value="INFO">INFO</option>
           <option value="WARN">WARN</option>
           <option value="ERROR">ERROR</option>
           <option value="CRITICA">CRITICA</option>
         </select>
-
-        <input
-          v-model.trim="filtroModuloApp"
-          maxlength="100"
-          placeholder="Filtrar módulo (uploads, pagos, sistema...)"
-          @keyup.enter="cargarLogsAplicacion"
-        />
       </section>
 
       <p v-if="errorMessageApp" class="error-message">{{ errorMessageApp }}</p>
@@ -191,18 +222,11 @@
                 <span v-else>-</span>
               </td>
             </tr>
+            <tr v-if="!logsApp.length">
+              <td colspan="9" class="empty-row">Sin registros para los filtros aplicados.</td>
+            </tr>
           </tbody>
         </table>
-      </div>
-
-      <div class="extra-actions">
-        <button
-          type="button"
-          class="switch-view-btn back"
-          @click="volverSeguridad"
-        >
-          Volver a logs de seguridad
-        </button>
       </div>
     </template>
   </div>
@@ -219,6 +243,8 @@ const activeView = ref('seguridad')
 const logs = ref([])
 const busqueda = ref('')
 const filtroSeveridad = ref('')
+const filtroModulo = ref('')
+const filtroEstado = ref('')
 const soloCriticos = ref(false)
 const errorMessage = ref('')
 const loading = ref(false)
@@ -231,6 +257,8 @@ const cargarLogs = async () => {
     logs.value = await getAuditLogs({
       search: busqueda.value || undefined,
       severidad: soloCriticos.value ? undefined : filtroSeveridad.value || undefined,
+      modulo: filtroModulo.value || undefined,
+      estado: filtroEstado.value || undefined,
       critical_only: soloCriticos.value || undefined,
       limit: 200,
     })
@@ -245,16 +273,21 @@ const criticalCount = computed(() =>
   logs.value.filter((log) => ['ALTA', 'CRITICA'].includes(log.severidad)).length,
 )
 
-watch(busqueda, () => {
+const scheduleSecurityReload = () => {
   clearTimeout(debounceId)
   debounceId = setTimeout(cargarLogs, 350)
-})
+}
+
+watch(busqueda, scheduleSecurityReload)
+watch(filtroModulo, scheduleSecurityReload)
+watch(filtroEstado, scheduleSecurityReload)
 
 // ===== Aplicacion =====
 const logsApp = ref([])
 const busquedaApp = ref('')
 const filtroSeveridadApp = ref('')
 const filtroModuloApp = ref('')
+const filtroEstadoApp = ref('')
 const errorMessageApp = ref('')
 const loadingApp = ref(false)
 let debounceAppId = null
@@ -267,6 +300,7 @@ const cargarLogsAplicacion = async () => {
       search: busquedaApp.value || undefined,
       severidad: filtroSeveridadApp.value || undefined,
       modulo: filtroModuloApp.value || undefined,
+      estado: filtroEstadoApp.value || undefined,
       limit: 200,
     })
   } catch (error) {
@@ -303,10 +337,14 @@ const getImageUrl = (log) => {
   return `${SUPABASE_PUBLIC_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${path}`
 }
 
-watch(busquedaApp, () => {
+const scheduleAppReload = () => {
   clearTimeout(debounceAppId)
   debounceAppId = setTimeout(cargarLogsAplicacion, 350)
-})
+}
+
+watch(busquedaApp, scheduleAppReload)
+watch(filtroModuloApp, scheduleAppReload)
+watch(filtroEstadoApp, scheduleAppReload)
 
 // ===== Comun =====
 const currentLogs = computed(() =>
@@ -453,7 +491,6 @@ background:#2980b9;
 
 .filters-card{
 display:grid;
-grid-template-columns: 2fr 1fr 1.5fr;
 gap:12px;
 align-items:center;
 
@@ -464,12 +501,40 @@ margin-bottom:16px;
 box-shadow:0 1px 4px rgba(0,0,0,.06);
 }
 
+.filters-card--security{
+grid-template-columns: 2fr 1.2fr 1fr 1.2fr auto;
+}
+
+.filters-card--app{
+grid-template-columns: 2fr 1.4fr 1fr 1.2fr;
+}
+
+@media (max-width: 900px){
+.filters-card--security,
+.filters-card--app{
+grid-template-columns: 1fr 1fr;
+}
+}
+
 .filters-card input,
 .filters-card select{
 padding:9px 10px;
 border:1px solid #cfd6e2;
 border-radius:8px;
 font-size:14px;
+}
+
+.filters-card select:disabled{
+background:#eef1f6;
+color:#888;
+cursor:not-allowed;
+}
+
+.empty-row{
+text-align:center !important;
+color:#888;
+padding:18px !important;
+font-style:italic;
 }
 
 .critical-filter{
@@ -527,11 +592,16 @@ text-align:left;
 padding:10px 12px;
 border-bottom:1px solid #eef1f6;
 font-size:13px;
+color:#1f2937;
 }
 
 th{
-background:#f5f7fb;
+background:#192847;
+color:#ffffff;
 font-weight:700;
+text-transform:uppercase;
+font-size:12px;
+letter-spacing:0.4px;
 }
 
 .severity{
@@ -579,12 +649,6 @@ margin-bottom:14px;
 
 /* SWITCH ENTRE VISTAS */
 
-.extra-actions{
-margin-top:18px;
-display:flex;
-justify-content:center;
-}
-
 .switch-view-btn{
 padding:10px 22px;
 border:none;
@@ -605,5 +669,10 @@ background:#7f8c8d;
 }
 .switch-view-btn.back:hover{
 background:#636e6f;
+}
+
+.switch-view-btn.header-switch{
+padding:8px 14px;
+font-size:13px;
 }
 </style>
