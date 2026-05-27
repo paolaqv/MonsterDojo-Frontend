@@ -1,5 +1,4 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "headers": [
     {
       "source": "/(.*)",
@@ -11,10 +10,6 @@
         {
           "key": "X-Frame-Options",
           "value": "DENY"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "https://monster-dojo-frontend.vercel.app"
         }
       ]
     }
