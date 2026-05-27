@@ -44,20 +44,21 @@ const options = computed(() => {
   }
 
   
-// para el analisis de riesgos, todavia sin permisos
-items.push({ 
+if (hasPermission('ver_auditoria')) {
+  items.push({ 
     key: 'activos', 
     label: 'Gestión de Activos', 
     to: '/activos', 
-    icon: 'fa-solid fa-server' // Ícono de un servidor/computadora
-})
+    icon: 'fa-solid fa-server'
+  })
 
-items.push({ 
-  key: 'analisis-riesgos', 
-  label: 'Análisis de Riesgos', 
-  to: '/analisis-riesgos', 
-  icon: 'fa-solid fa-chart-line' 
-})
+  items.push({ 
+    key: 'analisis-riesgos', 
+    label: 'Análisis de Riesgos', 
+    to: '/analisis-riesgos', 
+    icon: 'fa-solid fa-chart-line' 
+  })
+}
 
   return items
 })

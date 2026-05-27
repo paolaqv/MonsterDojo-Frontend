@@ -31,9 +31,10 @@
           </router-link>
 
           <router-link
-            to="/analisis-riesgos"
-            class="audit-button risk-button"
-          >
+              v-if="hasPermission('ver_auditoria')"
+              to="/analisis-riesgos"
+              class="audit-button risk-button"
+            >
             <span class="audit-icon">📊</span>
             <div class="audit-text">
               <strong>Análisis de riesgo</strong>

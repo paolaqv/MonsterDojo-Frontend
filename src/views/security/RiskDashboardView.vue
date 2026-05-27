@@ -61,8 +61,8 @@
           <div class="card critico">
             <div class="card-icon">⚠️</div>
             <div class="card-info">
-              <h4>Críticos</h4>
-              <p>{{ contarPorNivel('Crítico') }}</p>
+              <h4>Extremos</h4>
+              <p>{{ contarPorNivel('Extremo') }}</p>
             </div>
           </div>
           <div class="card alto">
@@ -75,8 +75,8 @@
           <div class="card medio">
             <div class="card-icon">🟡</div>
             <div class="card-info">
-              <h4>Medios</h4>
-              <p>{{ contarPorNivel('Medio') }}</p>
+              <h4>Moderados</h4>
+              <p>{{ contarPorNivel('Moderado') }}</p>
             </div>
           </div>
           <div class="card bajo">
@@ -100,11 +100,11 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="riesgo in filteredRiesgos" :key="riesgo.id">
-                <td>{{ truncate(riesgo.nombre, 30) }}</td>
-                <td>{{ truncate(riesgo.descripcion, 40) }}</td>
-                <td>{{ riesgo.estado }}</td>
-              </tr>
+            <tr v-for="riesgo in filteredRiesgos" :key="riesgo.id_riesgo">
+              <td>{{ truncate(riesgo.amenaza, 30) }}</td>
+              <td>{{ truncate(riesgo.consecuencia, 40) }}</td>
+              <td>{{ riesgo.nivel_inherente }}</td>
+            </tr>
             </tbody>
           </table>
           <button class="clear-filter" @click="clearFilter">Limpiar filtro</button>
@@ -119,8 +119,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import StaffNavbar from '@/components/navigation/StaffNavbar.vue'
 import StaffOptionsPanel from '@/components/navigation/StaffOptionsPanel.vue'
-import { getRiesgos } from '@/services/riskAnalysis.service'
-
+import { getRiesgos } from '@/services/riesgo.service'
 const router = useRouter()
 const riesgos = ref([])
 const filtroProbabilidad = ref('')
@@ -195,9 +194,10 @@ const contarPorNivel = (nivel) => {
 
 const filteredRiesgos = computed(() => {
   if (!filtroProbabilidad.value || !filtroImpacto.value) return []
-  return riesgos.value.filter(r => 
-    r.probabilidad_inherente === filtroProbabilidad.value && 
-    r.impacto_inherente === filtroImpacto.value
+
+  return riesgos.value.filter(r =>
+    r.probabilidad === Number(filtroProbabilidad.value) &&
+    r.impacto === Number(filtroImpacto.value)
   )
 })
 
