@@ -310,9 +310,9 @@ const routes = [
   {
     path: '/logout',
     name: 'logout',
-    beforeEnter: () => {
+    beforeEnter: async () => {
       const authStore = useAuthStore()
-      authStore.clearSession()
+      await authStore.clearSession()
       return '/login'
     },
   },
@@ -336,7 +336,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (!token) {
-    authStore.clearSession()
+    await authStore.clearSession()
     next('/login')
     return
   }
@@ -345,7 +345,7 @@ router.beforeEach(async (to, from, next) => {
   try {
     await authStore.refreshCurrentUser()
   } catch (error) {
-    authStore.clearSession()
+    await authStore.clearSession()
     next('/login')
     return
   }
