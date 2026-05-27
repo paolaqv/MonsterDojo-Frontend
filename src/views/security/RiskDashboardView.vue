@@ -7,38 +7,47 @@
       <StaffOptionsPanel profileRoute="/perfil_admin" />
 
       <div class="security-content-wrap">
+
+        <div v-if="cargando" class="loader-container">
+          <div class="spinner"></div>
+          <p>Cargando matriz de riesgos...</p>
+        </div>
+
         <div class="dashboard-header">
           <h2>🔥 Matriz de Calor - Análisis de Riesgos</h2>
           <button v-wave class="secondary-btn" @click="goBack">← Volver a lista</button>
         </div>
 
-        <!-- Matriz de Calor 3x3 -->
-        <div class="matrix-container">
-          <h3>Matriz de Riesgo Inherente</h3>
-          <table class="heat-matrix">
-            <thead>
-              <tr>
-                <th></th>
-                <th>Bajo</th>
-                <th>Medio</th>
-                <th>Alto</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="prob in ['Baja', 'Media', 'Alta']" :key="prob">
-                <th>{{ prob }}</th>
-                <td v-for="imp in ['Bajo', 'Medio', 'Alto']" :key="imp"
-                    :class="getCellClass(prob, imp)"
-                    @click="filterByCell(prob, imp)">
-                  <div class="cell-content">
-                    <span class="nivel">{{ getNivel(prob, imp) }}</span>
-                    <span class="count">{{ getCount(prob, imp) }}</span>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <!-- Matriz de Calor 5x5 -->
+<div class="matrix-container">
+  <h3>Matriz de Riesgo (Probabilidad 1-5 vs Impacto 1-5)</h3>
+  <table class="heat-matrix">
+    <thead>
+      <tr>
+        <th>P \ I</th>
+        <th>Impacto 1</th>
+        <th>Impacto 2</th>
+        <th>Impacto 3</th>
+        <th>Impacto 4</th>
+        <th>Impacto 5</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="p in 5" :key="p">
+        <th>Prob. {{ p }}</th>
+        <td v-for="i in 5" :key="i"
+            :class="getCellClassNum(p, i)"
+            :title="`Probabilidad: ${p}, Impacto: ${i} → Nivel: ${getNivelFromValue(p * i)}`"
+            @click="filterByCellNum(p, i)">
+          <div class="cell-content">
+            <span class="nivel">{{ getNivelFromValue(p * i) }}</span>
+            <span class="count">{{ getCountNum(p, i) }}</span>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
         <!-- Resumen de riesgos -->
         <div class="summary-cards">
@@ -116,6 +125,40 @@ const router = useRouter()
 const riesgos = ref([])
 const filtroProbabilidad = ref('')
 const filtroImpacto = ref('')
+const cargando = ref(true)
+
+
+//para la matriz5x5
+const getNivelFromValue = (valor) => {
+  if (valor >= 1 && valor <= 4) return 'Bajo'
+  if (valor >= 5 && valor <= 9) return 'Moderado'
+  if (valor >= 10 && valor <= 16) return 'Alto'
+  if (valor >= 17 && valor <= 25) return 'Extremo'
+  return ''
+}
+
+const getCellClassNum = (p, i) => {
+  const valor = p * i
+  const nivel = getNivelFromValue(valor).toLowerCase()
+  return `cell cell-${nivel}`
+}
+
+const getCountNum = (p, i) => {
+  return riesgos.value.filter(r => r.probabilidad === p && r.impacto === i).length
+}
+
+const filterByCellNum = (p, i) => {
+  filtroProbabilidad.value = p.toString()
+  filtroImpacto.value = i.toString()
+  
+  setTimeout(() => {
+    const filteredList = document.querySelector('.filtered-list')
+    if (filteredList) {
+      filteredList.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, 100)
+}
+//5x5
 
 const nivelMap = {
   'Baja-Bajo': 'Bajo',
@@ -161,6 +204,13 @@ const filteredRiesgos = computed(() => {
 const filterByCell = (prob, impact) => {
   filtroProbabilidad.value = prob
   filtroImpacto.value = impact
+  
+  setTimeout(() => {
+    const filteredList = document.querySelector('.filtered-list')
+    if (filteredList) {
+      filteredList.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, 100)
 }
 
 const clearFilter = () => {
@@ -178,11 +228,14 @@ const goBack = () => {
 }
 
 onMounted(async () => {
+  cargando.value = true
   try {
     const data = await getRiesgos()
     riesgos.value = data || []
   } catch (error) {
     console.error('Error cargando datos:', error)
+  } finally {
+    cargando.value = false
   }
 })
 </script>
@@ -224,8 +277,11 @@ onMounted(async () => {
 .heat-matrix th,
 .heat-matrix td {
   border: 1px solid #ddd;
-  padding: 16px;
-  width: 25%;
+  padding: 8px 6px;  
+  width: 14%;        
+  min-width: 70px;
+  border-radius: 8px;
+  transition: all 0.2s;
 }
 
 .heat-matrix th {
@@ -236,33 +292,36 @@ onMounted(async () => {
 
 .cell {
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.25s ease;
 }
 
 .cell:hover {
   transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1;
+  position: relative;
 }
 
 .cell-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;  
 }
 
 .nivel {
   font-weight: bold;
-  font-size: 14px;
+  font-size: 12px;  
 }
 
 .count {
-  font-size: 20px;
+  font-size: 16px; 
   font-weight: bold;
 }
 
-.cell-bajo { background: #d4edda; }
-.cell-medio { background: #fff3cd; }
-.cell-alto { background: #f8d7da; }
-.cell-crítico { background: #721c24; color: white; }
+.cell-bajo { background: linear-gradient(135deg, #28a745, #20c997); color: #155724; }
+.cell-medio { background: linear-gradient(135deg, #ffc107, #fd7e14); color: #856404; }
+.cell-alto { background: linear-gradient(135deg, #fd7e14, #dc3545); color: white; }
+.cell-crítico { background: linear-gradient(135deg, #dc3545, #6f1d1d); color: white; }
 
 .summary-cards {
   display: grid;
@@ -273,12 +332,18 @@ onMounted(async () => {
 
 .card {
   background: white;
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 20px;
   display: flex;
   align-items: center;
-  gap: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  gap: 18px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
 }
 
 .card-icon {
@@ -348,5 +413,34 @@ onMounted(async () => {
   border-radius: 30px;
   cursor: pointer;
   font-weight: 600;
+}
+
+/* Loader */
+.loader-container {
+  text-align: center;
+  padding: 60px;
+  background: white;
+  border-radius: 20px;
+  margin-bottom: 30px;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #e0e0e0;
+  border-top: 5px solid #192847;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loader-container p {
+  color: #666;
+  font-size: 14px;
 }
 </style>
