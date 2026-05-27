@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import api from '@/services/api'
 import { getCurrentUser } from '@/services/users.service'
 
 const getStoredUserSafely = () => {
@@ -48,7 +49,20 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    clearSession() {
+    async clearSession() {
+      /*
+       * Notifica al backend para registrar CIERRE_SESION antes de borrar
+       * el token. Si la red falla o el token está vencido, se procede
+       * con el limpiado local de todas formas.
+       */
+      try {
+        if (localStorage.getItem('token')) {
+          await api.post('/auth/logout')
+        }
+      } catch (e) {
+        // No interrumpir el cierre de sesión si el backend no responde.
+      }
+
       this.user = null
       localStorage.removeItem('token')
       localStorage.removeItem('user')

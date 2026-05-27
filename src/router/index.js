@@ -95,6 +95,41 @@ const routes = [
     component: SecurityPanelView,
     meta: { roles: ['encargadoSeguridad'] },
   },
+
+
+  // nuevo para las pantalla
+  {
+    path: '/analisis-riesgos',
+    name: 'analisis-riesgos',
+    component: () => import('@/views/security/RiskAnalysisView.vue'),
+    meta: { roles: ['encargadoSeguridad'] },
+  },
+  {
+    path: '/dashboard-riesgos',
+    name: 'dashboard-riesgos',
+    component: () => import('@/views/security/RiskDashboardView.vue'),
+    meta: { roles: ['encargadoSeguridad'] },
+  },
+  {
+  path: '/activos',
+  name: 'activos',
+  component: () => import('@/views/security/ActivosView.vue'),
+  meta: { permissions: ['ver_auditoria'] },
+},
+{
+  path: '/analisis-riesgos',
+  name: 'analisis-riesgos',
+  component: () => import('@/views/security/RiskAnalysisView.vue'),
+  meta: { permissions: ['ver_auditoria'] },
+},
+{
+  path: '/dashboard-riesgos',
+  name: 'dashboard-riesgos',
+  component: () => import('@/views/security/RiskDashboardView.vue'),
+  meta: { permissions: ['ver_auditoria'] },
+},
+
+
   {
     path: '/auditoria',
     name: 'auditPanel',
@@ -310,12 +345,13 @@ const routes = [
   {
     path: '/logout',
     name: 'logout',
-    beforeEnter: () => {
+    beforeEnter: async () => {
       const authStore = useAuthStore()
-      authStore.clearSession()
+      await authStore.clearSession()
       return '/login'
     },
   },
+ 
 ]
 
 const router = createRouter({
@@ -336,7 +372,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (!token) {
-    authStore.clearSession()
+    await authStore.clearSession()
     next('/login')
     return
   }
@@ -345,7 +381,7 @@ router.beforeEach(async (to, from, next) => {
   try {
     await authStore.refreshCurrentUser()
   } catch (error) {
-    authStore.clearSession()
+    await authStore.clearSession()
     next('/login')
     return
   }
