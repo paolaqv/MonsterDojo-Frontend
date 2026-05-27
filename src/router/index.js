@@ -95,6 +95,23 @@ const routes = [
     component: SecurityPanelView,
     meta: { roles: ['encargadoSeguridad'] },
   },
+
+
+  // nuevo para las pantalla
+  {
+    path: '/analisis-riesgos',
+    name: 'analisis-riesgos',
+    component: () => import('@/views/security/RiskAnalysisView.vue'),
+    meta: { roles: ['encargadoSeguridad'] },
+  },
+  {
+    path: '/dashboard-riesgos',
+    name: 'dashboard-riesgos',
+    component: () => import('@/views/security/RiskDashboardView.vue'),
+    meta: { roles: ['encargadoSeguridad'] },
+  },
+
+
   {
     path: '/auditoria',
     name: 'auditPanel',
@@ -316,6 +333,16 @@ const routes = [
       return '/login'
     },
   },
+  { 
+    path: '/activos', 
+    name: 'Activos', 
+    component: () => import('@/views/security/ActivosView.vue') },
+  { path: '/analisis-riesgos', 
+    name: 'Riesgos', 
+    component: () => import('@/views/security/RiskAnalysisView.vue') },
+  { path: '/dashboard-riesgos', 
+    name: 'DashboardRiesgos', 
+    component: () => import('@/views/security/RiskDashboardView.vue') }
 ]
 
 const router = createRouter({
