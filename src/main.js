@@ -11,6 +11,7 @@ import '@fontsource/baloo-bhai-2/400.css'
 import '@fontsource/baloo-bhai-2/600.css'
 import '@fontsource/baloo-bhai-2/700.css'
 import '@fontsource/bangers/400.css'
+import '@fortawesome/fontawesome-free/css/all.min.css'
 import { MotionPlugin } from '@vueuse/motion'
 import VWave from 'v-wave'
 
