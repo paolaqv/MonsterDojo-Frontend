@@ -144,24 +144,25 @@ console.log('RECAPTCHA TOKEN =>', recaptchaToken.value)
     authStore.setSession(result)
     authStore.startAutoRefresh()
 
-    const role = result?.user?.rol_id_rol || result?.user?.rol || ''
+    // const role = result?.user?.rol_id_rol || result?.user?.rol || ''
 
-    if (role === 'encargadoSeguridad') {
-      router.push('/panel-seguridad')
-      return
-    }
+    // if (role === 'encargadoSeguridad') {
+    //   router.push('/panel-seguridad')
+    //   return
+    // }
 
-    if (role === 'encargadoLocal') {
-      router.push('/adminpanel')
-      return
-    }
+    // if (role === 'encargadoLocal') {
+    //   router.push('/adminpanel')
+    //   return
+    // }
 
-    if (role === 'mesero') {
-      router.push('/panel-mesero')
-      return
-    }
+    // if (role === 'mesero') {
+    //   router.push('/panel-mesero')
+    //   return
+    // }
 
-    router.push('/inicio_usuario')
+    // router.push('/inicio_usuario')
+    router.push(authStore.getDefaultRouteByRole())
   } catch (error) {
     const detail =
       error?.normalizedMessage ||
@@ -181,6 +182,16 @@ console.log('RECAPTCHA TOKEN =>', recaptchaToken.value)
     errorMessage.value = detail
     await resetRecaptcha()
   }
+  const result = await login({
+  correo: normalizedEmail,
+  password: password.value,
+  recaptcha_token: recaptchaToken.value,
+})
+
+authStore.setSession(result)
+authStore.startAutoRefresh()
+
+router.push(authStore.getDefaultRouteByRole())
 }
 </script>
 

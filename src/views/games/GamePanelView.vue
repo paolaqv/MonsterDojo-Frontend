@@ -8,6 +8,7 @@ import editImg from '@/assets/images/dados.png'
 import categoryImg from '@/assets/images/category.png'
 import StaffNavbar from '@/components/navigation/StaffNavbar.vue'
 import { usePermissions } from '@/composables/usePermissions'
+import { useAuthStore } from '@/stores/auth'
 import {
   createGame,
   createGameCategory,
@@ -28,15 +29,8 @@ const { hasPermission, hasRole } = usePermissions()
 const canViewGames = computed(() => hasPermission('ver_juegos'))
 const canManageGames = computed(() => hasPermission('gestionar_juegos'))
 
-/*
- * Estas rutas solamente definen a qué panel regresa el usuario.
- * No autorizan acciones dentro del módulo de juegos.
- */
-const homeRoute = computed(() => {
-  if (hasRole('mesero')) return '/panel-mesero'
-  if (hasRole('encargadoSeguridad')) return '/panel-seguridad'
-  return '/adminpanel'
-})
+
+const homeRoute = computed(() => authStore.getDefaultRouteByRole())
 
 const profileRoute = computed(() => {
   if (hasRole('encargadoLocal') || hasRole('encargadoSeguridad')) {

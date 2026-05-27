@@ -8,6 +8,7 @@ import hamburguerImg from '@/assets/images/hamburguer.png'
 import categoryImg from '@/assets/images/category.png'
 import StaffNavbar from '@/components/navigation/StaffNavbar.vue'
 import { usePermissions } from '@/composables/usePermissions'
+import { useAuthStore } from '@/stores/auth'
 import {
   createProduct,
   createProductCategory,
@@ -19,7 +20,7 @@ import {
 } from '@/services/products.service'
 
 const { hasPermission, hasRole } = usePermissions()
-
+const authStore = useAuthStore()
 /*
  * Permisos del módulo.
  * Las funcionalidades de productos dependen de permisos,
@@ -32,11 +33,7 @@ const canManageProducts = computed(() => hasPermission('gestionar_productos'))
  * Las rutas se utilizan únicamente para navegación.
  * No autorizan acciones del módulo.
  */
-const homeRoute = computed(() => {
-  if (hasRole('mesero')) return '/panel-mesero'
-  if (hasRole('encargadoSeguridad')) return '/panel-seguridad'
-  return '/adminpanel'
-})
+const homeRoute = computed(() => authStore.getDefaultRouteByRole())
 
 const profileRoute = computed(() => {
   if (hasRole('encargadoLocal') || hasRole('encargadoSeguridad')) {
