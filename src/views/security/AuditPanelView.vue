@@ -366,12 +366,34 @@ const volverSeguridad = async () => {
   await cargarLogs()
 }
 
+// Bolivia: UTC-4, sin horario de verano.
+// El backend devuelve fechas con timezone (activity) o sin timezone (application).
+// Si llega sin timezone, asumimos que es UTC (lo que guarda func.now() en Postgres por defecto).
+const BOLIVIA_TZ = 'America/La_Paz'
+
+const parseLogDate = (value) => {
+  if (!value) return null
+  let raw = String(value)
+  // ISO sin info de zona: agregar 'Z' para que JS lo tome como UTC.
+  const hasZone = /Z$|[+-]\d{2}:?\d{2}$/.test(raw)
+  if (!hasZone) raw = raw.replace(' ', 'T') + 'Z'
+  const d = new Date(raw)
+  return isNaN(d.getTime()) ? null : d
+}
+
 const formatDate = (value) => {
-  if (!value) return '-'
+  const d = parseLogDate(value)
+  if (!d) return '-'
   return new Intl.DateTimeFormat('es-BO', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(new Date(value))
+    timeZone: BOLIVIA_TZ,
+    year: '2-digit',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(d)
 }
 
 onMounted(cargarLogs)
