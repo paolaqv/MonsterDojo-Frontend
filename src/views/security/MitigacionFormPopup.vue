@@ -38,24 +38,39 @@
           </div>
 
           <div class="form-row-3">
+            
             <div class="form-group" :class="{ 'error': errors.tipo }">
               <label>
                 Tipo de Control *
-                <span class="tooltip-icon" title="T: Técnico (software/hardware) / P: Procedimental (normas/procesos)">ⓘ</span>
+                <span class="tooltip-icon" title="P: Preventivo, D: Detectivo, C: Correctivo, Di: Disuasivo">ⓘ</span>
               </label>
               <div class="tipo-options">
-                <label :class="{ active: form.tipo === 'T' }">
-                  <input type="radio" v-model="form.tipo" value="T" @change="validateTipo" />
-                  <span class="tipo-card">
-                    <strong>T</strong>
-                    <small>Técnico</small>
-                  </span>
-                </label>
                 <label :class="{ active: form.tipo === 'P' }">
                   <input type="radio" v-model="form.tipo" value="P" @change="validateTipo" />
                   <span class="tipo-card">
                     <strong>P</strong>
-                    <small>Procedimental</small>
+                    <small>Preventivo</small>
+                  </span>
+                </label>
+                <label :class="{ active: form.tipo === 'D' }">
+                  <input type="radio" v-model="form.tipo" value="D" @change="validateTipo" />
+                  <span class="tipo-card">
+                    <strong>D</strong>
+                    <small>Detectivo</small>
+                  </span>
+                </label>
+                <label :class="{ active: form.tipo === 'C' }">
+                  <input type="radio" v-model="form.tipo" value="C" @change="validateTipo" />
+                  <span class="tipo-card">
+                    <strong>C</strong>
+                    <small>Correctivo</small>
+                  </span>
+                </label>
+                <label :class="{ active: form.tipo === 'Di' }">
+                  <input type="radio" v-model="form.tipo" value="Di" @change="validateTipo" />
+                  <span class="tipo-card">
+                    <strong>Di</strong>
+                    <small>Disuasivo</small>
                   </span>
                 </label>
               </div>
@@ -64,22 +79,29 @@
 
             <div class="form-group" :class="{ 'error': errors.nivel }">
               <label>
-                Nivel de Control *
-                <span class="tooltip-icon" title="A: Alto (control fuerte) / B: Básico (control mínimo)">ⓘ</span>
+                Nivel (A, S, M) *
+                <span class="tooltip-icon" title="A: Automático, S: Semiautomático, M: Manual">ⓘ</span>
               </label>
               <div class="nivel-options">
                 <label :class="{ active: form.nivel === 'A' }">
                   <input type="radio" v-model="form.nivel" value="A" @change="validateNivel" />
-                  <span class="nivel-card alto">
+                  <span class="nivel-card">
                     <strong>A</strong>
-                    <small>Alto</small>
+                    <small>Automático</small>
                   </span>
                 </label>
-                <label :class="{ active: form.nivel === 'B' }">
-                  <input type="radio" v-model="form.nivel" value="B" @change="validateNivel" />
-                  <span class="nivel-card bajo">
-                    <strong>B</strong>
-                    <small>Básico</small>
+                <label :class="{ active: form.nivel === 'S' }">
+                  <input type="radio" v-model="form.nivel" value="S" @change="validateNivel" />
+                  <span class="nivel-card">
+                    <strong>S</strong>
+                    <small>Semiauto</small>
+                  </span>
+                </label>
+                <label :class="{ active: form.nivel === 'M' }">
+                  <input type="radio" v-model="form.nivel" value="M" @change="validateNivel" />
+                  <span class="nivel-card">
+                    <strong>M</strong>
+                    <small>Manual</small>
                   </span>
                 </label>
               </div>
@@ -89,16 +111,15 @@
             <div class="form-group" :class="{ 'error': errors.frecuencia }">
               <label>
                 Frecuencia
-                <span class="tooltip-icon" title="Con qué frecuencia se aplica el control">ⓘ</span>
+                <span class="tooltip-icon" title="D: Diario, S: Semanal, M: Mensual, A: Anual, PT: Por Transacción">ⓘ</span>
               </label>
               <select v-model="form.frecuencia" @blur="validateFrecuencia">
                 <option value="">Seleccionar</option>
-                <option value="Diaria">Diaria (D)</option>
-                <option value="Semanal">Semanal (S)</option>
-                <option value="Mensual">Mensual (M)</option>
-                <option value="Anual">Anual (A)</option>
-                <option value="Por Transacción">Por Transacción (PT)</option>
-                <option value="Tiempo Real">Tiempo Real (TR)</option>
+                <option value="D">Diario (D)</option>
+                <option value="S">Semanal (S)</option>
+                <option value="M">Mensual (M)</option>
+                <option value="A">Anual (A)</option>
+                <option value="PT">Por Transacción (PT)</option>
               </select>
               <span class="error-message" v-if="errors.frecuencia">{{ errors.frecuencia }}</span>
             </div>
@@ -206,7 +227,6 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save'])
 
-//estados error
 const errors = reactive({
   control: '',
   tipo: '',
@@ -216,7 +236,6 @@ const errors = reactive({
   impacto_residual: ''
 })
 
-//validacones
 const validateControl = () => {
   if (!form.control_implementado.trim()) {
     errors.control = 'El control implementado es obligatorio'
@@ -241,7 +260,7 @@ const validateTipo = () => {
 
 const validateNivel = () => {
   if (!form.nivel) {
-    errors.nivel = 'Seleccione el nivel de control'
+    errors.nivel = 'Seleccione el nivel del control'
     return false
   }
   errors.nivel = ''
@@ -249,14 +268,13 @@ const validateNivel = () => {
 }
 
 const validateFrecuencia = () => {
-  //frec es opcional
   errors.frecuencia = ''
   return true
 }
 
 const validateProbabilidadResidual = () => {
   if (!form.probabilidad_residual) {
-    errors.probabilidad_residual = 'Seleccione la probabilidad residual'
+    errors.probabilidad_residual = 'Seleccione la probabilidad'
     return false
   }
   errors.probabilidad_residual = ''
@@ -265,7 +283,7 @@ const validateProbabilidadResidual = () => {
 
 const validateImpactoResidual = () => {
   if (!form.impacto_residual) {
-    errors.impacto_residual = 'Seleccione el impacto residual'
+    errors.impacto_residual = 'Seleccione el impacto'
     return false
   }
   errors.impacto_residual = ''
@@ -340,11 +358,12 @@ const loadMitigacionData = () => {
   }
 }
 
+// AQUÍ ESTÁ LA MAGIA QUE SOLUCIONA EL ERROR
 watch(() => props.show, (value) => {
   if (value) {
     loadMitigacionData()
   }
-})
+}, { immediate: true }) // <-- Obliga al watch a ejecutarse apenas nazca el componente
 
 const closePopup = () => {
   emit('close')
@@ -357,7 +376,7 @@ const saveMitigacion = async () => {
   }
 
   const payload = {
-    riesgo_id_riesgo: form.riesgo_id_riesgo,
+    riesgo_id_riesgo: form.riesgo_id_riesgo, // Ahora esto sí tendrá el ID correcto
     control_implementado: form.control_implementado.trim(),
     tipo: form.tipo,
     nivel: form.nivel,
@@ -379,7 +398,7 @@ const saveMitigacion = async () => {
     emit('save')
     closePopup()
   } catch (error) {
-    Swal.fire('Error', error.normalizedMessage || 'No se pudo guardar la mitigación', 'error')
+    Swal.fire('Error', error.response?.data?.detail || 'No se pudo guardar la mitigación', 'error')
   }
 }
 </script>
@@ -403,13 +422,12 @@ const saveMitigacion = async () => {
   background: white;
   border-radius: 28px;
   width: 90%;
-  max-width: 1200px;  /* Igual que el de riesgos */
+  max-width: 1200px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
 }
 
-/* Cabecera */
 .popup-header {
   display: flex;
   justify-content: space-between;
@@ -439,34 +457,14 @@ const saveMitigacion = async () => {
   font-size: 28px;
 }
 
-.popup-header h3 {
-  margin: 0;
-  font-size: 22px;
-}
-
-.popup-header p {
-  margin: 6px 0 0;
-  font-size: 13px;
-  opacity: 0.8;
-}
+.popup-header h3 { margin: 0; font-size: 22px; }
+.popup-header p { margin: 6px 0 0; font-size: 13px; opacity: 0.8; }
 
 .close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  transition: all 0.2s;
+  background: none; border: none; font-size: 24px; cursor: pointer; color: white; width: 40px; height: 40px; border-radius: 20px; transition: all 0.2s;
 }
+.close-btn:hover { background: rgba(255,255,255,0.2); }
 
-.close-btn:hover {
-  background: rgba(255,255,255,0.2);
-}
-
-/* Cuerpo - ocupa todo el ancho */
 .popup-body {
   padding: 32px;
   width: 100%;
@@ -486,10 +484,11 @@ const saveMitigacion = async () => {
   border-bottom: 2px solid #eee;
 }
 
-/* Cada campo ocupa el 100% del ancho */
 .form-group {
   margin-bottom: 24px;
   width: 100%;
+  /* Soluciona el error visual donde el texto de error salía en línea */
+  display: block; 
 }
 
 .form-group label {
@@ -529,10 +528,11 @@ const saveMitigacion = async () => {
 }
 
 .error-message {
-  display: block;
+  display: block; /* Asegura que el error baje a la siguiente línea */
   color: #dc3545;
   font-size: 12px;
   margin-top: 8px;
+  font-weight: 600;
 }
 
 .char-counter {
@@ -543,20 +543,9 @@ const saveMitigacion = async () => {
 }
 
 .tooltip-icon {
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  background: #e0e0e0;
-  color: #666;
-  border-radius: 50%;
-  font-size: 11px;
-  text-align: center;
-  line-height: 18px;
-  margin-left: 8px;
-  cursor: help;
+  display: inline-block; width: 18px; height: 18px; background: #e0e0e0; color: #666; border-radius: 50%; font-size: 11px; text-align: center; line-height: 18px; margin-left: 8px; cursor: help;
 }
 
-/* Filas de 3 columnas */
 .form-row-3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -565,7 +554,6 @@ const saveMitigacion = async () => {
   width: 100%;
 }
 
-/* Filas de 2 columnas */
 .form-row-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -574,11 +562,18 @@ const saveMitigacion = async () => {
   width: 100%;
 }
 
-/* Opciones de Tipo (T/P) */
-.tipo-options,
+/* Opciones distribuidas en Grid */
+.tipo-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
 .nivel-options {
-  display: flex;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
   width: 100%;
 }
 
@@ -586,7 +581,6 @@ const saveMitigacion = async () => {
 .nivel-options label {
   margin: 0;
   cursor: pointer;
-  flex: 1;
 }
 
 .tipo-options input,
@@ -597,35 +591,29 @@ const saveMitigacion = async () => {
 .tipo-card,
 .nivel-card {
   display: block;
-  padding: 16px;
+  padding: 14px 8px;
   border: 2px solid #e0e0e0;
-  border-radius: 16px;
+  border-radius: 12px;
   text-align: center;
   transition: all 0.2s;
   cursor: pointer;
   width: 100%;
   box-sizing: border-box;
+  background: white;
 }
 
 .tipo-card strong,
 .nivel-card strong {
   display: block;
-  font-size: 20px;
-  margin-bottom: 8px;
+  font-size: 18px;
+  margin-bottom: 4px;
 }
 
 .tipo-card small,
 .nivel-card small {
   display: block;
   font-size: 11px;
-  color: #999;
-}
-
-.nivel-card.alto {
-  background: #f8d7da;
-}
-.nivel-card.bajo {
-  background: #d4edda;
+  color: #777;
 }
 
 .tipo-options input:checked + .tipo-card,
@@ -633,9 +621,9 @@ const saveMitigacion = async () => {
   border-color: #192847;
   background: #e8edf5;
   transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
 }
 
-/* Escala deslizante */
 .scale-input {
   display: flex;
   flex-direction: column;
@@ -660,7 +648,6 @@ const saveMitigacion = async () => {
   text-align: center;
 }
 
-/* Preview card - ocupa todo el ancho */
 .preview-card {
   background: linear-gradient(135deg, #e8edf5, #dce3ed);
   border-radius: 20px;
@@ -702,7 +689,6 @@ const saveMitigacion = async () => {
   color: #192847;
 }
 
-/* Info card */
 .info-card {
   background: #fff8e1;
   border-radius: 16px;
@@ -724,23 +710,15 @@ const saveMitigacion = async () => {
 }
 
 .info-content strong {
-  display: block;
-  font-size: 12px;
-  color: #856404;
-  margin-bottom: 6px;
+  display: block; font-size: 12px; color: #856404; margin-bottom: 6px;
 }
 
 .info-content span {
-  font-size: 13px;
-  color: #333;
+  font-size: 13px; color: #333;
 }
 
-/* Badges */
 .badge {
-  padding: 6px 16px;
-  border-radius: 30px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 6px 16px; border-radius: 30px; font-size: 13px; font-weight: 600;
 }
 
 .nivel-bajo { background: #d4edda; color: #155724; }
@@ -748,7 +726,6 @@ const saveMitigacion = async () => {
 .nivel-alto { background: #f8d7da; color: #721c24; }
 .nivel-extremo { background: #721c24; color: white; }
 
-/* Footer */
 .popup-footer {
   display: flex;
   justify-content: flex-end;
@@ -763,53 +740,31 @@ const saveMitigacion = async () => {
 
 .primary-btn {
   background: linear-gradient(135deg, #192847, #1f3156);
-  color: white;
-  border: none;
-  padding: 12px 32px;
-  border-radius: 40px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-  transition: all 0.2s;
+  color: white; border: none; padding: 12px 32px; border-radius: 40px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s;
 }
-
 .primary-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #D48600, #e6a300);
-  transform: translateY(-2px);
+  background: linear-gradient(135deg, #D48600, #e6a300); transform: translateY(-2px);
 }
-
 .primary-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  opacity: 0.5; cursor: not-allowed;
 }
 
 .secondary-btn {
-  background: #e0e0e0;
-  color: #333;
-  border: none;
-  padding: 12px 32px;
-  border-radius: 40px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
+  background: #e0e0e0; color: #333; border: none; padding: 12px 32px; border-radius: 40px; cursor: pointer; font-weight: 600; font-size: 14px;
 }
+.secondary-btn:hover { background: #ccc; }
 
-.secondary-btn:hover {
-  background: #ccc;
-}
-
-/* Responsive */
-@media (max-width: 900px) {
-  .form-row-2,
+@media (max-width: 1100px) {
   .form-row-3 {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 20px;
   }
-  
-  .tipo-options,
-  .nivel-options {
-    flex-direction: column;
-    gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .form-row-2 {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
   
   .preview-content {

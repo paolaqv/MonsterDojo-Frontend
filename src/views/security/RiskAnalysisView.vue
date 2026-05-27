@@ -6,16 +6,21 @@
       <StaffOptionsPanel profileRoute="/perfil_admin" />
 
       <div class="security-content-wrap">
-
+        
         <div class="risk-header">
           <div>
             <h2>📊 Análisis de Riesgos</h2>
             <p>Gestión completa de riesgos de seguridad, controles y mitigaciones</p>
           </div>
-          <button v-wave class="primary-btn" @click="openCreateRiskPopup">
-            <span class="btn-icon">+</span>
-            Nuevo Riesgo
-          </button>
+          <div class="header-actions">
+            <button v-wave class="secondary-btn" @click="router.push('/activos')">
+              🖥️ Gestionar Activos
+            </button>
+            <button v-wave class="primary-btn" @click="openCreateRiskPopup">
+              <span class="btn-icon">+</span>
+              Nuevo Riesgo
+            </button>
+          </div>
         </div>
 
         <div class="stats-cards">
@@ -185,7 +190,6 @@
       </div>
     </div>
 
-    <!-- Popups (modales más grandes) -->
     <RiskFormPopup
       :show="showRiskPopup"
       :riskData="selectedRisk"
@@ -195,11 +199,12 @@
     />
 
     <MitigacionFormPopup
+      v-if="selectedRiesgo"
       :show="showMitigacionPopup"
       :mitigacionData="selectedMitigacion"
-      :riesgoId="selectedRiesgoId"
-      :riesgoNombre="selectedRiesgoNombre"
-      :riesgoOriginal="riesgoOriginalData"
+      :riesgoId="selectedRiesgo.id_riesgo"
+      :riesgoNombre="selectedRiesgo.amenaza"
+      :riesgoOriginal="selectedRiesgo"
       :isEditing="isEditingMitigacion"
       @close="closeMitigacionPopup"
       @save="loadData"
@@ -211,6 +216,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
+
+import '@/assets/css/adminpanel.css' // <-- ¡ESTA ES LA LÍNEA MÁGICA QUE ARREGLA EL SOLAPAMIENTO!
+
 import StaffNavbar from '@/components/navigation/StaffNavbar.vue'
 import StaffOptionsPanel from '@/components/navigation/StaffOptionsPanel.vue'
 import RiskFormPopup from './RiskFormPopup.vue'
@@ -232,9 +240,7 @@ const isEditingRisk = ref(false)
 
 const showMitigacionPopup = ref(false)
 const selectedMitigacion = ref(null)
-const selectedRiesgoId = ref(null)
-const selectedRiesgoNombre = ref('')
-const riesgoOriginalData = ref(null)
+const selectedRiesgo = ref(null)
 const isEditingMitigacion = ref(false)
 
 const contarPorNivel = (nivel) => {
@@ -343,18 +349,14 @@ const confirmDeleteRisk = async (riesgo) => {
 
 const openCreateMitigacionPopup = (riesgo) => {
   selectedMitigacion.value = null
-  selectedRiesgoId.value = riesgo.id_riesgo
-  selectedRiesgoNombre.value = riesgo.amenaza
-  riesgoOriginalData.value = riesgo
+  selectedRiesgo.value = riesgo
   isEditingMitigacion.value = false
   showMitigacionPopup.value = true
 }
 
 const openEditMitigacionPopup = (mitigacion, riesgo) => {
   selectedMitigacion.value = mitigacion
-  selectedRiesgoId.value = riesgo.id_riesgo
-  selectedRiesgoNombre.value = riesgo.amenaza
-  riesgoOriginalData.value = riesgo
+  selectedRiesgo.value = riesgo
   isEditingMitigacion.value = true
   showMitigacionPopup.value = true
 }
@@ -362,9 +364,7 @@ const openEditMitigacionPopup = (mitigacion, riesgo) => {
 const closeMitigacionPopup = () => {
   showMitigacionPopup.value = false
   selectedMitigacion.value = null
-  selectedRiesgoId.value = null
-  selectedRiesgoNombre.value = ''
-  riesgoOriginalData.value = null
+  selectedRiesgo.value = null
   loadData()
 }
 
@@ -418,6 +418,32 @@ onMounted(() => {
   color: #666;
   margin: 6px 0 0;
   font-size: 14px;
+}
+
+/* ESTILOS PARA LOS BOTONES DE LA CABECERA */
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.secondary-btn {
+  background: #e8edf5;
+  color: #192847;
+  border: 1px solid #c8d4e5;
+  padding: 12px 24px;
+  border-radius: 40px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.secondary-btn:hover {
+  background: #dce3ed;
+  transform: translateY(-2px);
 }
 
 .primary-btn {

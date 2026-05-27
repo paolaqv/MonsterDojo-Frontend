@@ -46,6 +46,13 @@ const options = computed(() => {
   
 // para el analisis de riesgos, todavia sin permisos
 items.push({ 
+    key: 'activos', 
+    label: 'Gestión de Activos', 
+    to: '/activos', 
+    icon: 'fa-solid fa-server' // Ícono de un servidor/computadora
+})
+
+items.push({ 
   key: 'analisis-riesgos', 
   label: 'Análisis de Riesgos', 
   to: '/analisis-riesgos', 
