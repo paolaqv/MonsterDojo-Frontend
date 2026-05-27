@@ -117,7 +117,20 @@ export const changeSecurityQuestion = async ({
   return data
 }
 
-export const logout = () => {
+export const logout = async () => {
+  /*
+   * Notifica al backend ANTES de borrar el token. Si fallara la red
+   * o el token estuviera vencido, igual se limpia el estado local.
+   * El backend registra el evento CIERRE_SESION en la bitácora.
+   */
+  try {
+    if (localStorage.getItem('token')) {
+      await api.post('/auth/logout')
+    }
+  } catch (e) {
+    // Silencioso: el cierre local debe ocurrir siempre.
+  }
+
   localStorage.removeItem('token')
   localStorage.removeItem('user')
   sessionStorage.removeItem('reset_correo')
