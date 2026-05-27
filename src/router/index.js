@@ -333,6 +333,16 @@ const routes = [
       return '/login'
     },
   },
+  { 
+    path: '/activos', 
+    name: 'Activos', 
+    component: () => import('@/views/security/ActivosView.vue') },
+  { path: '/analisis-riesgos', 
+    name: 'Riesgos', 
+    component: () => import('@/views/security/RiskAnalysisView.vue') },
+  { path: '/dashboard-riesgos', 
+    name: 'DashboardRiesgos', 
+    component: () => import('@/views/security/RiskDashboardView.vue') }
 ]
 
 const router = createRouter({

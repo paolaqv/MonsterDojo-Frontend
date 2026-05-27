@@ -1,4 +1,3 @@
-<!-- src/views/security/RiskFormPopup.vue -->
 <template>
   <div v-if="show" class="popup-overlay" @click.self="closePopup">
     <div v-motion
@@ -18,11 +17,9 @@
       </div>
 
       <div class="popup-body">
-        <!-- Datos básicos -->
         <div class="form-section">
           <h4>📋 Información del Riesgo</h4>
 
-          <!-- Selector de Activo -->
           <div class="form-group" :class="{ 'error': errors.activo }">
             <label>
               Activo de información *
@@ -31,13 +28,12 @@
             <select v-model="form.activo_id_activo" @blur="validateActivo">
               <option value="">Seleccionar activo</option>
               <option v-for="activo in activos" :key="activo.id_activo" :value="activo.id_activo">
-                {{ activo.nombre }} ({{ activo.categoria }})
+                {{ activo.nombre }}
               </option>
             </select>
             <span class="error-message" v-if="errors.activo">{{ errors.activo }}</span>
           </div>
 
-          <!-- Amenaza -->
           <div class="form-group" :class="{ 'error': errors.amenaza }">
             <label>
               Amenaza / Vulnerabilidad *
@@ -54,7 +50,6 @@
             <span class="error-message" v-if="errors.amenaza">{{ errors.amenaza }}</span>
           </div>
 
-          <!-- Consecuencia -->
           <div class="form-group" :class="{ 'error': errors.consecuencia }">
             <label>
               Consecuencia / Riesgo *
@@ -71,7 +66,6 @@
             <span class="error-message" v-if="errors.consecuencia">{{ errors.consecuencia }}</span>
           </div>
 
-          <!-- Probabilidad e Impacto (2 columnas con gap amplio) -->
           <div class="form-row-2">
             <div class="form-group" :class="{ 'error': errors.probabilidad }">
               <label>Probabilidad (1-5) *</label>
@@ -124,7 +118,6 @@
             </div>
           </div>
 
-          <!-- Preview de Riesgo Inherente -->
           <div class="preview-card" v-if="form.probabilidad && form.impacto">
             <div class="preview-icon">📈</div>
             <div class="preview-content">
@@ -139,7 +132,6 @@
             </div>
           </div>
 
-          <!-- Tratamiento (opciones en grid con gap) -->
           <div class="form-group" :class="{ 'error': errors.tratamiento }">
             <label>
               Tratamiento del Riesgo *
@@ -171,7 +163,8 @@
 
 <script setup>
 import { reactive, computed, watch, ref, onMounted } from 'vue'
-import { createRiesgo, updateRiesgo, getActivos } from '@/services/riesgo.service'
+import { createRiesgo, updateRiesgo } from '@/services/riesgo.service'
+import { getActivos } from '@/services/activo.service'
 import Swal from 'sweetalert2'
 
 const props = defineProps({
@@ -376,7 +369,7 @@ const saveRisk = async () => {
     emit('save')
     closePopup()
   } catch (error) {
-    Swal.fire('Error', error.normalizedMessage || 'No se pudo guardar el riesgo', 'error')
+    Swal.fire('Error', error.response?.data?.detail || 'No se pudo guardar el riesgo', 'error')
   }
 }
 
@@ -404,7 +397,7 @@ onMounted(() => {
   background: white;
   border-radius: 28px;
   width: 90%;
-  max-width: 1200px;  /* MUCHO MÁS ANCHO */
+  max-width: 1200px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
