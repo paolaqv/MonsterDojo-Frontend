@@ -95,8 +95,42 @@ export const useAuthStore = defineStore('auth', {
         case 'mesero':
           return '/panel-mesero'
         default:
-          return '/login'
+          break
       }
+      if (this.hasPermission('ver_productos')) {
+    return '/food_panel'
+  }
+
+  if (this.hasPermission('ver_juegos')) {
+    return '/game_panel'
+  }
+
+  if (this.hasPermission('ver_mesas')) {
+    return '/registro_mesa'
+  }
+
+  if (this.hasPermission('ver_reservas_detalle')) {
+    return '/reservas_panel'
+  }
+
+  if (this.hasPermission('ver_pedidos_detalle')) {
+    return '/pedidos_panel'
+  }
+
+  if (this.hasPermission('ver_usuarios')) {
+    return '/userspanel'
+  }
+
+  if (this.hasPermission('ver_politica_contrasenas')) {
+    return '/politicas-contrasena'
+  }
+
+  if (this.hasPermission('ver_auditoria')) {
+    return '/auditoria'
+  }
+
+  return '/login'
+
     },
 
     startAutoRefresh(intervalMs = 5 * 60 * 1000) {
