@@ -10,6 +10,8 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@fontsource/baloo-bhai-2": "^5.2.8",
+    "@fontsource/bangers": "^5.2.8",
     "@unhead/vue": "^3.1.0",
     "@vueuse/motion": "3.0.3",
     "axios": "1.15.0",

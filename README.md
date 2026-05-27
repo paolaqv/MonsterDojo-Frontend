@@ -60,4 +60,5 @@ npm install lucide-vue-next @vueuse/motion v-wave
 npm install vue-recaptcha
 npm install @unhead/vue
 npm install vue-loading-overlay@^6.0
+npm install @fontsource/baloo-bhai-2 @fontsource/bangers
 ```

@@ -7,7 +7,10 @@ import router from './router'
 
 import './assets/main.css'
 import 'vue-loading-overlay/dist/css/index.css'
-
+import '@fontsource/baloo-bhai-2/400.css'
+import '@fontsource/baloo-bhai-2/600.css'
+import '@fontsource/baloo-bhai-2/700.css'
+import '@fontsource/bangers/400.css'
 import { MotionPlugin } from '@vueuse/motion'
 import VWave from 'v-wave'
 
