@@ -43,8 +43,26 @@ const options = computed(() => {
     })
   }
 
+  
+if (hasPermission('ver_auditoria')) {
+  items.push({ 
+    key: 'activos', 
+    label: 'Gestión de Activos', 
+    to: '/activos', 
+    icon: 'fa-solid fa-server'
+  })
+
+  items.push({ 
+    key: 'analisis-riesgos', 
+    label: 'Análisis de Riesgos', 
+    to: '/analisis-riesgos', 
+    icon: 'fa-solid fa-chart-line' 
+  })
+}
+
   return items
 })
+
 </script>
 
 <template>

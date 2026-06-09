@@ -31,8 +31,13 @@ export const updateGame = async (gameId, payload) => {
 }
 
 export const uploadGameImage = async (file) => {
-  const formData = new FormData()
+  if (!file) {
+    const err = new Error('Debe seleccionar una imagen para el juego.')
+    err.normalizedMessage = err.message
+    throw err
+  }
 
+  const formData = new FormData()
   formData.append('file', file)
   formData.append('tipo', 'juego')
 
@@ -41,4 +46,12 @@ export const uploadGameImage = async (file) => {
       'Content-Type': undefined,
     },
   })
+
+  if (!data || !data.url) {
+    const err = new Error('La respuesta del servidor de imágenes es inválida.')
+    err.normalizedMessage = err.message
+    throw err
+  }
+
+  return data
 }
